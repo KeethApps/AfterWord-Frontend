@@ -4,8 +4,8 @@
 import React from "react";
 import { View, Text, StyleSheet, Switch } from "react-native";
 // import { AppHeader, Card, SectionHeader } from "../src/components";
-import { AppHeader, Card, SectionHeader } from "../../src/components";
-import { colors, spacing, radius, typography } from "../../src/theme";
+import { AppHeader, Card, SectionHeader } from "../../../src/components";
+import { colors, spacing, radius, typography } from "../../../src/theme";
 
 interface SettingRowProps {
   label: string;

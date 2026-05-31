@@ -4,8 +4,8 @@
  */
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import { AppHeader, Button, FolioFox } from "../../src/components";
-import { colors, spacing, radius, typography } from "../../src/theme";
+import { AppHeader, Button, FolioFox } from "../../../src/components";
+import { colors, spacing, radius, typography } from "../../../src/theme";
 
 type UploadState = "idle" | "selected" | "uploading" | "processing" | "success" | "partial" | "error";
 

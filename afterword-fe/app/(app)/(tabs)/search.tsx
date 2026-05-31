@@ -13,7 +13,7 @@ import {
   Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Fonts } from "../../constants/theme";
+import { Colors, Fonts } from "../../../constants/theme";
 
 const SAMPLE_RESULTS = [
   {

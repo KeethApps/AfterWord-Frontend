@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView, StyleSheet, Platform } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Fonts } from "../../constants/theme";
+import { Colors, Fonts } from "../../../constants/theme";
 
 const PLACEHOLDER_BOOKS = [
   { title: "The Daily Stoic", author: "Ryan Holiday", highlights: 45, color: '#EBE6D8' },

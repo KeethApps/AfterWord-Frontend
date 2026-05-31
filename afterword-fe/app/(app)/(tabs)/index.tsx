@@ -8,7 +8,7 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Fonts } from "../../constants/theme";
+import { Colors, Fonts } from "../../../constants/theme";
 
 const PLACEHOLDER_BOOKS = [
   { title: "The Daily Stoic", author: "Ryan Holiday", highlights: 45 },
@@ -57,7 +57,7 @@ export default function HomeScreen() {
             />
 
             <Image
-              source={require("../../assets/fox/fox-icon.png")}
+              source={require("../../../assets/fox/fox-icon.png")}
               style={styles.avatarImage}
               resizeMode="contain"
             />
@@ -84,7 +84,7 @@ export default function HomeScreen() {
           <Text style={styles.dailyAuthor}>— Saint Augustine</Text>
           {/* Placeholder for fox illustration */}
           <Image
-            source={require("../../assets/fox/fox-reading.png")}
+            source={require("../../../assets/fox/fox-reading.png")}
             style={styles.foxIllustration}
             resizeMode="contain"
           />

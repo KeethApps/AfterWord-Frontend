@@ -1,8 +1,8 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { useWindowDimensions } from 'react-native';
-import { ResponsiveTabBar } from '../../src/components/ResponsiveTabBar';
-import { Colors } from '../../constants/theme';
+import { ResponsiveTabBar } from "../../../src/components/ResponsiveTabBar";
+import { Colors } from '../../../constants/theme';
 
 export default function TabLayout() {
   const { width } = useWindowDimensions();
