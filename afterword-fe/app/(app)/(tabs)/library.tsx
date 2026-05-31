@@ -26,7 +26,7 @@ export default function LibraryScreen() {
         
         <View style={styles.toolbar}>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={Colors.slate} />
+            <Ionicons name="search" size={18} color={Colors.slate} />
             <Text style={styles.searchText}>Search books...</Text>
           </View>
           <View style={styles.addButton}>

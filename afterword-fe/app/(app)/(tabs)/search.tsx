@@ -97,7 +97,7 @@ export default function SearchScreen() {
 
         {/* Search bar */}
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={Colors.slate} />
+          <Ionicons name="search" size={18} color={Colors.slate} />
           <TextInput
             style={styles.searchInput}
             value={query}

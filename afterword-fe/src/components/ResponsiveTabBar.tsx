@@ -4,10 +4,15 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts } from '../../constants/theme';
+import { useLayoutStore } from '../../hooks/useLayoutStore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
+  const insets = useSafeAreaInsets();
+  
+  const { isSidebarCollapsed, toggleSidebar } = useLayoutStore();
 
   const handlePress = (route: any, isFocused: boolean) => {
     if (Platform.OS !== 'web') {
@@ -27,9 +32,9 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
 
   const getIconName = (routeName: string, isFocused: boolean): keyof typeof Ionicons.glyphMap => {
     switch (routeName) {
-      case 'index': return isFocused ? 'home' : 'home-outline';
       case 'library': return isFocused ? 'library' : 'library-outline';
       case 'search': return isFocused ? 'search' : 'search-outline';
+      case 'index': return isFocused ? 'home' : 'home-outline';
       case 'upload': return isFocused ? 'cloud-upload' : 'cloud-upload-outline';
       case 'settings': return isFocused ? 'settings' : 'settings-outline';
       default: return 'ellipse';
@@ -39,10 +44,22 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
   if (isLargeScreen) {
     // Sidebar for large screens (Web/Tablet)
     return (
-      <View style={styles.sidebar}>
+      <View style={[styles.sidebar, { width: isSidebarCollapsed ? 80 : 240 }]}>
         <View style={styles.sidebarHeader}>
-          <Text style={styles.logoText}>AfterWord</Text>
+          {isSidebarCollapsed ? (
+            <Pressable onPress={toggleSidebar} style={styles.collapseToggle}>
+              <Ionicons name="menu" size={24} color={Colors.white} />
+            </Pressable>
+          ) : (
+            <View style={styles.sidebarHeaderRow}>
+              <Text style={styles.logoText}>AfterWord</Text>
+              <Pressable onPress={toggleSidebar} style={styles.collapseToggle}>
+                <Ionicons name="chevron-back" size={24} color={Colors.white} />
+              </Pressable>
+            </View>
+          )}
         </View>
+
         <View style={styles.sidebarNav}>
           {state.routes.map((route, index) => {
             const { options } = descriptors[route.key];
@@ -53,50 +70,86 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
               <Pressable
                 key={route.key}
                 onPress={() => handlePress(route, isFocused)}
-                style={[styles.sidebarItem, isFocused && styles.sidebarItemActive]}
+                style={[
+                  styles.sidebarItem,
+                  isSidebarCollapsed && styles.sidebarItemCollapsed,
+                  isFocused && styles.sidebarItemActive,
+                ]}
               >
                 <Ionicons 
                   name={getIconName(route.name, isFocused)} 
-                  size={20} 
-                  color={isFocused ? Colors.gold : Colors.white} 
-                  style={styles.sidebarIcon}
+                  size={24} 
+                  color={isFocused ? Colors.gold : Colors.mist} 
+                  style={!isSidebarCollapsed && styles.sidebarIcon}
                 />
-                <Text style={[styles.sidebarLabel, isFocused && styles.sidebarLabelActive]}>
-                  {label}
-                </Text>
+                {!isSidebarCollapsed && (
+                  <Text style={[styles.sidebarLabel, isFocused && styles.sidebarLabelActive]}>
+                    {label}
+                  </Text>
+                )}
               </Pressable>
             );
           })}
+        </View>
+
+        <View style={styles.sidebarFooter}>
+           {/* Placeholder for User Profile */}
+           <View style={[styles.userProfile, isSidebarCollapsed && styles.userProfileCollapsed]}>
+             <View style={styles.avatar}>
+               <Text style={styles.avatarText}>🦊</Text>
+             </View>
+             {!isSidebarCollapsed && (
+               <View style={styles.userInfo}>
+                 <Text style={styles.userName}>Keeth Reader</Text>
+                 <Text style={styles.userEmail}>keeth@afterword.com</Text>
+               </View>
+             )}
+           </View>
         </View>
       </View>
     );
   }
 
-  // Bottom Tab Bar for small screens (Mobile)
+  // Floating Pill Bottom Tab Bar for small screens (Mobile)
   return (
-    <View style={styles.bottomBar}>
-      {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
-        const label = options.title !== undefined ? options.title : route.name;
-        const isFocused = state.index === index;
-
-        return (
-          <Pressable
-            key={route.key}
-            onPress={() => handlePress(route, isFocused)}
-            style={styles.bottomBarItem}
-          >
-            <Ionicons 
-              name={getIconName(route.name, isFocused)} 
-              size={24} 
-              color={isFocused ? Colors.forest : Colors.slate} 
-            />
-            <Text style={[styles.bottomBarLabel, isFocused && styles.bottomBarLabelActive]}>
-              {label}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={[styles.bottomBarContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View style={styles.pillBar}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const label = options.title !== undefined ? options.title : route.name;
+          const isFocused = state.index === index;
+          
+          return (
+            <Pressable
+              key={route.key}
+              onPress={() => handlePress(route, isFocused)}
+              style={styles.pillItem}
+            >
+              {isFocused ? (
+                <View style={styles.activeIconContainer}>
+                  <View style={styles.floatingCircle}>
+                    <Ionicons 
+                      name={getIconName(route.name, isFocused)} 
+                      size={24} 
+                      color={Colors.white} 
+                    />
+                  </View>
+                  <Text style={styles.activeLabel}>{label}</Text>
+                </View>
+              ) : (
+                <View style={styles.inactiveIconContainer}>
+                  <Ionicons 
+                    name={getIconName(route.name, isFocused)} 
+                    size={24} 
+                    color={Colors.slate} 
+                  />
+                  <Text style={styles.inactiveLabel}>{label}</Text>
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -108,68 +161,176 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: 240,
     backgroundColor: Colors.forest,
     paddingVertical: 32,
-    paddingHorizontal: 16,
+    display: 'flex',
+    flexDirection: 'column',
+    borderRightWidth: 1,
+    borderRightColor: 'rgb(255, 255, 255)',
   },
   sidebarHeader: {
-    marginBottom: 48,
-    paddingHorizontal: 8,
+    marginBottom: 40,
+    paddingHorizontal: 16,
+    height: 40,
+    justifyContent: 'center',
+  },
+  sidebarHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  collapseToggle: {
+    padding: 14,
   },
   logoText: {
     fontFamily: Fonts.serifBold,
-    fontSize: 28,
+    fontSize: 24,
     color: Colors.white,
   },
   sidebarNav: {
     gap: 8,
+    paddingHorizontal: 16,
+    flex: 1,
   },
   sidebarItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 12,
+  },
+  sidebarItemCollapsed: {
+    justifyContent: 'center',
+    paddingHorizontal: 0,
   },
   sidebarItemActive: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   sidebarIcon: {
-    marginRight: 12,
+    marginRight: 16,
   },
   sidebarLabel: {
     fontFamily: Fonts.sans,
     fontSize: 16,
-    color: Colors.white,
+    color: Colors.mist,
   },
   sidebarLabelActive: {
-    fontWeight: '600',
-    color: Colors.gold,
+    fontWeight: '700',
+    color: Colors.white,
   },
-
-  // Bottom Bar Styles
-  bottomBar: {
+  sidebarFooter: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  userProfile: {
     flexDirection: 'row',
-    backgroundColor: Colors.white,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-    paddingTop: 8,
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
   },
-  bottomBarItem: {
-    flex: 1,
+  userProfileCollapsed: {
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.amber,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bottomBarLabel: {
+  avatarText: {
+    fontSize: 18,
+  },
+  userInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  userName: {
+    fontFamily: Fonts.sansBold,
+    color: Colors.white,
+    fontSize: 14,
+  },
+  userEmail: {
+    fontFamily: Fonts.sans,
+    color: Colors.mist,
+    fontSize: 12,
+    marginTop: 2,
+  },
+
+  // Pill Bar Styles (Mobile)
+  bottomBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    pointerEvents: 'box-none',
+  },
+  pillBar: {
+    flexDirection: 'row',
+    backgroundColor: '#f5f1e8', // Dark pill background from image
+    borderRadius: 40,
+    height: 72,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 8,
+    paddingHorizontal: 8,
+  },
+  pillItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  inactiveIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inactiveLabel: {
     fontFamily: Fonts.sans,
     fontSize: 10,
-    marginTop: 4,
     color: Colors.slate,
+    marginTop: 4,
   },
-  bottomBarLabelActive: {
-    color: Colors.forest,
-    fontWeight: '600',
+  activeIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    height: '100%',
   },
+  floatingCircle: {
+    position: 'absolute',
+    top: -18, // Break out of the pill
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#1E3A34', // Prominent purple/blue from image
+    alignItems: 'center',
+    justifyContent: 'center',
+    // shadowColor: '#1c1c1c',
+    // shadowOffset: { width: 0, height: 4 },
+    // shadowOpacity: 0.4,
+    // shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 4,
+    borderColor: Colors.cream, // To give a cutout effect against background
+  },
+  activeLabel: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 10,
+    color: '#1c1c1c',
+    position: 'absolute',
+    bottom: 12, // Position text below the floating circle
+  }
 });

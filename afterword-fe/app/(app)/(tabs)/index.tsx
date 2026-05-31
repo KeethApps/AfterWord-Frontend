@@ -44,18 +44,12 @@ export default function HomeScreen() {
         {/* Header section */}
         <View style={styles.header}>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={Colors.slate} />
+            <Ionicons name="search" size={18} color={Colors.slate} />
             <Text style={styles.searchText}>
-              Search your library, highlights, or tags...
+              Search your library...
             </Text>
           </View>
           <View style={styles.headerIcons}>
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color={Colors.forest}
-            />
-
             <Image
               source={require("../../../assets/fox/fox-icon.png")}
               style={styles.avatarImage}
@@ -174,7 +168,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     gap: 12,
   },
@@ -343,8 +337,7 @@ foxIllustration: {
     color: Colors.slate,
   },
   avatarImage: {
-    width: 36,
-    height: 36,
-    marginLeft: 12,
+    width: 64,
+    height: 64,
   },
 });
