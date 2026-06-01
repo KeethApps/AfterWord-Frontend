@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   FlatList,
   TextInput,
   useWindowDimensions,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -16,6 +17,7 @@ import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { AppHeader } from "../../../src/components/AppHeader";
 import { BookCover } from "../../../src/components/BookCover";
+import { supabase } from "../../../lib/supabase";
 
 /**
  * =========================================================
@@ -36,71 +38,6 @@ type ViewMode = "grid" | "list";
 
 /**
  * =========================================================
- * MOCK DATA
- * =========================================================
- */
-
-const PLACEHOLDER_BOOKS: Book[] = [
-  {
-    id: "1",
-    title: "The Daily Stoic",
-    author: "Ryan Holiday",
-    highlights: 45,
-    coverColor: "#EBE6D8",
-  },
-  {
-    id: "2",
-    title: "Atomic Habits",
-    author: "James Clear",
-    highlights: 68,
-    coverColor: "#F5F1E8",
-  },
-  {
-    id: "3",
-    title: "The Midnight Library",
-    author: "Matt Haig",
-    highlights: 31,
-    coverColor: "#1E3A34",
-  },
-  {
-    id: "4",
-    title: "Deep Work",
-    author: "Cal Newport",
-    highlights: 24,
-    coverColor: "#2E2E2E",
-  },
-  {
-    id: "5",
-    title: "Thinking, Fast and Slow",
-    author: "Daniel Kahneman",
-    highlights: 16,
-    coverColor: "#EBE6D8",
-  },
-  {
-    id: "6",
-    title: "The 5 AM Club",
-    author: "Robin Sharma",
-    highlights: 19,
-    coverColor: "#D64545",
-  },
-  {
-    id: "7",
-    title: "Sapiens",
-    author: "Yuval Noah Harari",
-    highlights: 47,
-    coverColor: "#F5F1E8",
-  },
-  {
-    id: "8",
-    title: "Man's Search for Meaning",
-    author: "Viktor Frankl",
-    highlights: 13,
-    coverColor: "#2E2E2E",
-  },
-];
-
-/**
- * =========================================================
  * SCREEN
  * =========================================================
  */
@@ -109,17 +46,42 @@ export default function LibraryScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
 
-  const [books] = useState<Book[]>(PLACEHOLDER_BOOKS);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchLibrary() {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("books")
+          .select("id, title, author, cover_image_url, highlights:highlights(count)");
+
+        if (error) {
+          console.error("Library fetch error:", error);
+        } else if (data) {
+          const mapped = data.map((b: any) => ({
+            id: b.id,
+            title: b.title,
+            author: b.author || "Unknown",
+            highlights: b.highlights?.[0]?.count || 0,
+            coverColor: b.cover_image_url || "#EBE6D8",
+          }));
+          setBooks(mapped);
+        }
+      } catch (err) {
+        console.error("Library error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchLibrary();
+  }, []);
 
   const [query, setQuery] = useState("");
-  const [viewMode, setViewMode] =
-    useState<ViewMode>("grid");
-
-  const [sortMode, setSortMode] =
-    useState<SortMode>("title");
-
-  const [showDropdown, setShowDropdown] =
-    useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [sortMode, setSortMode] = useState<SortMode>("title");
+  const [showDropdown, setShowDropdown] = useState(false);
 
   /**
    * =========================================================

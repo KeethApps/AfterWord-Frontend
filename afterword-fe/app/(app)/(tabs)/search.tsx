@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
@@ -12,36 +13,54 @@ import { AppHeader } from "../../../src/components/AppHeader";
 import { HighlightCard } from "../../../src/components/HighlightCard";
 import { EmptyState } from "../../../src/components/EmptyState";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
+import { supabase } from "../../../lib/supabase";
 
-const SAMPLE_RESULTS = [
-  {
-    quote: "You have power over your mind — not outside events. Realize this, and you will find strength.",
-    bookTitle: "Meditations",
-    author: "Marcus Aurelius",
-    page: 33,
-    score: 0.91,
-  },
-  {
-    quote: "The impediment to action advances action. What stands in the way becomes the way.",
-    bookTitle: "The Obstacle Is the Way",
-    author: "Ryan Holiday",
-    page: 33,
-    score: 0.87,
-  },
-  {
-    quote: "Resilience is accepting your new reality, even if it's less good than the one you had before.",
-    bookTitle: "Daring Greatly",
-    author: "Brené Brown",
-    page: 67,
-    score: 0.84,
-  },
-];
+interface SearchResult {
+  highlight_text: string;
+  note_text: string | null;
+  similarity: number;
+  book: {
+    id: string;
+    title: string;
+    author: string;
+    cover_image_url: string | null;
+  };
+}
 
 const FILTER_TABS = ["Top Results", "By Book"];
 
 export default function SearchScreen() {
-  const [query, setQuery] = useState("stoicism and resilience");
+  const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState(0);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    
+    const timeout = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("search", {
+          body: { query: query.trim(), limit: 10 },
+        });
+        if (error) {
+          console.error("Search error:", error);
+        } else if (data && data.results) {
+          setResults(data.results);
+        }
+      } catch (err) {
+        console.error("Search fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeout);
+  }, [query]);
 
   return (
     <ScreenContainer padded={false}>
@@ -82,18 +101,20 @@ export default function SearchScreen() {
       {/* Results or empty state */}
       {query.length > 0 ? (
         <>
-          <Text style={styles.resultCount}>
-            {SAMPLE_RESULTS.length * 4} results for "{query}"
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.s16 }}>
+            <Text style={styles.resultCount}>
+              {results.length} results for "{query}"
+            </Text>
+            {loading && <ActivityIndicator size="small" color={Colors.forest} />}
+          </View>
           <View style={styles.list}>
-            {SAMPLE_RESULTS.map((r, i) => (
+            {results.map((r, i) => (
               <HighlightCard 
                 key={i} 
-                quote={r.quote}
-                bookTitle={r.bookTitle}
-                author={r.author}
-                page={r.page}
-                score={r.score}
+                quote={r.highlight_text}
+                bookTitle={r.book.title}
+                author={r.book.author}
+                score={r.similarity}
               />
             ))}
           </View>

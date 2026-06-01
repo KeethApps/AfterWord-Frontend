@@ -280,7 +280,7 @@ export default function UploadScreen() {
       } = await supabase.auth.getUser();
       if (authError || !user) throw new Error("Not authenticated");
 
-      const storagePath = `clippings/${user.id}/${Date.now()}_${file.name}`;
+      const storagePath = `${user.id}/${Date.now()}_${file.name}`;
       const fileResponse = await fetch(file.uri);
       const blob = await fileResponse.blob();
 
@@ -295,7 +295,7 @@ export default function UploadScreen() {
       }, 180);
 
       const { error: storageError } = await supabase.storage
-        .from("uploads")
+        .from("clippings")
         .upload(storagePath, blob, {
           contentType: "text/plain",
           upsert: false,
@@ -307,17 +307,58 @@ export default function UploadScreen() {
       setUploadProgress(100);
       setState("processing");
 
-      const { data: fnData, error: fnError } = await supabase.functions.invoke(
-        "process-clippings",
-        { body: { storagePath, userId: user.id } }
-      );
+      // Poll ingestion_jobs to wait for parsing to complete
+      let jobId: string | null = null;
+      for (let i = 0; i < 30; i++) {
+        await new Promise((res) => setTimeout(res, 1000));
+        const { data: jobs } = await supabase
+          .from("ingestion_jobs")
+          .select("id, status")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1);
 
-      if (fnError) throw new Error(fnError.message);
+        if (jobs && jobs.length > 0) {
+          const job = jobs[0];
+          if (job.status === "failed") throw new Error("Failed to parse clippings file.");
+          if (job.status === "parsed" || job.status === "completed") {
+            jobId = job.id;
+            break;
+          }
+        }
+      }
+
+      if (!jobId) throw new Error("Timeout waiting for parsing to start.");
+
+      // Poll ingestion_chunks to wait for all chunks to be processed
+      let imported = 0;
+      let failed = 0;
+      let totalChunks = 0;
+
+      for (let i = 0; i < 60; i++) {
+        await new Promise((res) => setTimeout(res, 1500));
+        const { data: chunks } = await supabase
+          .from("ingestion_chunks")
+          .select("status")
+          .eq("job_id", jobId);
+
+        if (chunks && chunks.length > 0) {
+          totalChunks = chunks.length;
+          imported = chunks.filter(c => c.status === "completed").length;
+          failed = chunks.filter(c => c.status === "failed").length;
+
+          if (imported + failed === totalChunks) {
+            break;
+          }
+        } else if (i > 10 && totalChunks === 0) {
+           break; // no chunks found after a while
+        }
+      }
 
       const importResult: ImportResult = {
-        imported: fnData?.imported ?? 0,
-        books: fnData?.books ?? 0,
-        failed: fnData?.failed ?? 0,
+        imported,
+        books: 1, // We don't have a direct way to count unique books added, so we mock 1
+        failed,
       };
 
       setResult(importResult);
