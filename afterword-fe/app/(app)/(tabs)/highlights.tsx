@@ -192,10 +192,10 @@ export default function HighlightsScreen() {
                 <View style={styles.favCard}>
                   {/* Star button */}
                   <Pressable
-                    style={styles.favStarBtn}
+                    style={styles.favHeartBtn}
                     onPress={() => toggleFavorite(h.id)}
                   >
-                    <Ionicons name="star" size={14} color={Colors.amber} />
+                    <Ionicons name="heart" size={14} color={Colors.amber} />
                   </Pressable>
 
                   <Text style={styles.favQuote} numberOfLines={4}>
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
   },
-  favStarBtn: {
+  favHeartBtn: {
     position: "absolute",
     top: Spacing.s12,
     right: Spacing.s12,

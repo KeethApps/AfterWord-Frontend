@@ -30,6 +30,8 @@ const PLACEHOLDER_HIGHLIGHTS = [
   },
 ];
 
+
+
 export default function HomeScreen() {
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -80,10 +82,17 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.greeting}>
+      <Image
+          source={require("../../../assets/fox/fox-reading.png")}
+          style={styles.foxIllustration}
+          resizeMode="contain"
+        />
         <Text style={styles.greetingTitle}>Good morning, Sam</Text>
         <Text style={styles.greetingSub}>
           Let's continue your reading journey.
         </Text>
+                {/* Decorative Fox */}
+
       </View>
 
       {/* Daily Highlight */}
@@ -93,12 +102,6 @@ export default function HomeScreen() {
           quote="The world is a book, and those who do not travel read only one page."
           bookTitle="Saint Augustine"
           onPress={() => {}}
-        />
-        {/* Decorative Fox */}
-        <Image
-          source={require("../../../assets/fox/fox-reading.png")}
-          style={styles.foxIllustration}
-          resizeMode="contain"
         />
       </View>
 
@@ -229,11 +232,9 @@ const styles = StyleSheet.create({
   },
   foxIllustration: {
     position: "absolute",
-    bottom: -30,
-    right: 16,
+    right: 0,
     width: 100,
     height: 100,
-    zIndex: 10,
   },
   section: {
     marginBottom: Spacing.s40,

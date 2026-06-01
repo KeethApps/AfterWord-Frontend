@@ -131,7 +131,7 @@ export default function BookDetailsScreen() {
             {/* Action Buttons */}
             <View style={styles.actionButtonsRow}>
               <Pressable style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>Read Highlights</Text>
+                <Text style={styles.primaryButtonText}>Book Edition</Text>
               </Pressable>
               <Pressable style={styles.secondaryButton}>
                 <Text style={styles.secondaryButtonText}>Add Highlight</Text>
@@ -306,14 +306,10 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     flex: 1,
-    backgroundColor: '#73C6C6', // A teal color similar to mockup
+    backgroundColor: Colors.forest, 
     paddingVertical: Spacing.s16,
     borderRadius: 30,
     alignItems: 'center',
-    shadowColor: "#73C6C6",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
     elevation: 4,
   },
   primaryButtonText: {
