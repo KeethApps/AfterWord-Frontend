@@ -1,20 +1,22 @@
-/**
- * HighlightCard — displays a single book highlight quote with metadata.
- * Matches the quote card style from the AfterWord mockup.
- */
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { colors, spacing, radius, typography } from "../theme";
+import { View, Text, StyleSheet, Pressable, Image, ImageSourcePropType } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Colors, Fonts, Spacing } from "../../constants/theme";
 
 interface HighlightCardProps {
   quote: string;
   bookTitle: string;
   author?: string;
   page?: number | string;
-  score?: number;     // relevance score 0–1
+  score?: number;
   note?: string;
   onPress?: () => void;
-  featured?: boolean; // "Daily Highlight" style
+  featured?: boolean;
+  foxAsset?: ImageSourcePropType;
+  // New props for interaction
+  isFavorite?: boolean;
+  onFavorite?: () => void;
+  onShare?: () => void;
 }
 
 export function HighlightCard({
@@ -26,46 +28,112 @@ export function HighlightCard({
   note,
   onPress,
   featured = false,
+  foxAsset,
+  isFavorite = false,
+  onFavorite,
+  onShare,
 }: HighlightCardProps) {
+  if (featured) {
+    return (
+      <Pressable onPress={onPress} style={({ pressed }) => [styles.featuredCard, pressed && styles.pressed]}>
+        <View style={styles.bgCircleTopRight} />
+        <View style={styles.bgCircleBottomLeft} />
+        
+        <View style={styles.featuredLabel}>
+          <Text style={styles.featuredStar}>★</Text>
+          <Text style={styles.featuredLabelText}>Daily Highlight</Text>
+        </View>
+
+        <View style={styles.featuredBody}>
+          <View style={styles.featuredTextBlock}>
+            <Text style={styles.featuredQuote} numberOfLines={5}>
+              "{quote}"
+            </Text>
+
+            <View style={styles.featuredAttr}>
+              <Text style={styles.featuredBookTitle}>{bookTitle}</Text>
+              {author && (
+                <>
+                  <Text style={styles.featuredDot}> · </Text>
+                  <Text style={styles.featuredAuthor}>{author}</Text>
+                </>
+              )}
+            </View>
+
+            <View style={styles.featuredFooter}>
+              {page && (
+                <View style={styles.pagePill}>
+                  <Text style={styles.pagePillText}>Page {page}</Text>
+                </View>
+              )}
+              
+              <View style={styles.actionButtons}>
+                <Pressable onPress={onShare} style={styles.actionBtnFeatured}>
+                  <Ionicons name="share-outline" size={20} color={Colors.cream} />
+                </Pressable>
+                <Pressable onPress={onFavorite} style={styles.actionBtnFeatured}>
+                  <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={20} color={isFavorite ? Colors.amber : Colors.cream} />
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
+          {foxAsset && (
+            <Image
+              source={foxAsset}
+              style={styles.foxImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       onPress={onPress}
-      style={({ hovered }) => [
+      style={({ hovered, pressed }: any) => [
         styles.card,
-        featured && styles.featuredCard,
         hovered && styles.cardHovered,
+        pressed && styles.pressed,
       ]}
     >
-      {/* Score badge */}
+      <View style={styles.leftBar} />
+
       {score !== undefined && (
         <View style={styles.scoreBadge}>
           <Text style={styles.scoreText}>{score.toFixed(2)}</Text>
         </View>
       )}
 
-      {featured && (
-        <View style={styles.featuredLabel}>
-          <Text style={styles.featuredStar}>★</Text>
-          <Text style={styles.featuredText}>Daily Highlight</Text>
-          <Text style={styles.featuredStar}>☀</Text>
-        </View>
-      )}
-
-      {/* Quote */}
-      <Text style={[styles.quote, featured && styles.quoteFeatured]} numberOfLines={featured ? 4 : 3}>
+      <Text style={styles.quote} numberOfLines={4}>
         "{quote}"
       </Text>
 
-      {/* Attribution */}
-      <View style={styles.meta}>
+      <View style={styles.metaRow}>
         <Text style={styles.bookTitle}>{bookTitle}</Text>
-        {author && <Text style={styles.metaSep}> · </Text>}
-        {author && <Text style={styles.author}>{author}</Text>}
+        {author && (
+          <>
+            <Text style={styles.metaSep}> · </Text>
+            <Text style={styles.author}>{author}</Text>
+          </>
+        )}
       </View>
 
-      {page && (
-        <Text style={styles.page}>Page {page}</Text>
-      )}
+      <View style={styles.footerRow}>
+        <View style={styles.pageContainer}>
+          {page && <Text style={styles.page}>Page {page}</Text>}
+        </View>
+        <View style={styles.actionButtons}>
+          <Pressable onPress={onShare} style={styles.actionBtn}>
+            <Ionicons name="share-outline" size={18} color={Colors.slate} />
+          </Pressable>
+          <Pressable onPress={onFavorite} style={styles.actionBtn}>
+            <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={18} color={isFavorite ? Colors.danger : Colors.slate} />
+          </Pressable>
+        </View>
+      </View>
 
       {note && (
         <View style={styles.noteArea}>
@@ -78,116 +146,238 @@ export function HighlightCard({
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing[5],
+  featuredCard: {
+    backgroundColor: Colors.forest,
+    borderRadius: 20,
+    padding: Spacing.s24,
+    overflow: "hidden",
     position: "relative",
   },
-  featuredCard: {
-    backgroundColor: colors.forest,
-    borderColor: colors.forest,
-  },
-  cardHovered: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    transform: [{ translateY: -1 }],
-  },
-  scoreBadge: {
+  bgCircleTopRight: {
     position: "absolute",
-    top: spacing[3],
-    right: spacing[3],
-    backgroundColor: colors.mist,
-    paddingHorizontal: spacing[2],
-    paddingVertical: 3,
-    borderRadius: radius.pill,
+    top: -48,
+    right: -48,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: Colors.amber,
+    opacity: 0.08,
   },
-  scoreText: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    fontWeight: "600",
-    fontFamily: typography.fonts.body,
+  bgCircleBottomLeft: {
+    position: "absolute",
+    bottom: -36,
+    left: -24,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: Colors.white,
+    opacity: 0.03,
   },
   featuredLabel: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing[1],
-    marginBottom: spacing[3],
+    gap: Spacing.s6,
+    marginBottom: Spacing.s16,
   },
   featuredStar: {
-    color: colors.amber,
-    fontSize: 14,
+    color: Colors.cream,
+    fontSize: 15,
+    marginBottom: 4,
   },
-  featuredText: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.sm,
+  featuredLabelText: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
     fontWeight: "600",
-    color: colors.amber,
-    letterSpacing: 0.3,
+    color: "rgba(244,239,230,0.5)",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
-  quote: {
-    fontFamily: typography.fonts.display,
-    fontSize: typography.sizes.base,
+  featuredBody: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.s16,
+  },
+  featuredTextBlock: {
+    flex: 1,
+  },
+  featuredQuote: {
+    fontFamily: Fonts.serif,
+    fontSize: 19,
     fontStyle: "italic",
-    color: colors.textPrimary,
-    lineHeight: 24,
-    marginBottom: spacing[3],
+    color: Colors.cream,
+    lineHeight: 30,
+    marginBottom: Spacing.s16,
   },
-  quoteFeatured: {
-    color: colors.textInverse,
-    fontSize: typography.sizes.md,
-    lineHeight: 28,
-  },
-  meta: {
+  featuredAttr: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
+    marginBottom: Spacing.s8,
+  },
+  featuredBookTitle: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 13,
+    color: "rgba(244,239,230,0.7)",
+  },
+  featuredDot: {
+    fontSize: 13,
+    color: "rgba(244,239,230,0.3)",
+  },
+  featuredAuthor: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    fontStyle: "italic",
+    color: "rgba(244,239,230,0.5)",
+  },
+  featuredFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: Spacing.s8,
+  },
+  pagePill: {
+    backgroundColor: "rgba(233,196,106,0.15)",
+    borderWidth: 0.5,
+    borderColor: "rgba(233,196,106,0.25)",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  pagePillText: {
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    fontWeight: "500",
+    color: Colors.amber,
+    letterSpacing: 0.3,
+  },
+  foxImage: {
+    width: 152,
+    height: 152,
+    flexShrink: 0,
+    marginTop: -1,
+  },
+  card: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    padding: Spacing.s20,
+    paddingLeft: Spacing.s20 + 6,
+    overflow: "hidden",
+    position: "relative",
+  },
+  cardHovered: {
+    borderColor: Colors.slate,
+    transform: [{ translateY: -1 }],
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+  leftBar: {
+    position: "absolute",
+    left: 0,
+    top: 20,
+    bottom: 20,
+    width: 3,
+    backgroundColor: Colors.amber,
+    borderRadius: 2,
+    opacity: 0.6,
+  },
+  scoreBadge: {
+    position: "absolute",
+    top: Spacing.s12,
+    right: Spacing.s12,
+    backgroundColor: Colors.mist,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.s8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  scoreText: {
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    fontWeight: "600",
+    color: Colors.slate,
+    fontVariant: ["tabular-nums"],
+  },
+  quote: {
+    fontFamily: Fonts.serif,
+    fontSize: 15,
+    fontStyle: "italic",
+    color: Colors.forest,
+    lineHeight: 24,
+    marginBottom: Spacing.s12,
+    paddingRight: Spacing.s40,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
     marginBottom: 4,
   },
   bookTitle: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.sm,
-    fontWeight: "600",
-    color: colors.textMuted,
+    fontFamily: Fonts.sansBold,
+    fontSize: 13,
+    color: Colors.slate,
   },
   metaSep: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
+    fontSize: 13,
+    color: Colors.slate,
+    opacity: 0.4,
   },
   author: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    color: Colors.slate,
+    opacity: 0.7,
+  },
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  pageContainer: {
+    flex: 1,
   },
   page: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    opacity: 0.7,
-    marginTop: 2,
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    color: Colors.slate,
+    opacity: 0.5,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.s8,
+  },
+  actionBtn: {
+    padding: Spacing.s4,
+  },
+  actionBtnFeatured: {
+    padding: Spacing.s4,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 16,
   },
   noteArea: {
-    marginTop: spacing[3],
-    paddingTop: spacing[3],
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    marginTop: Spacing.s12,
+    paddingTop: Spacing.s12,
+    borderTopWidth: 0.5,
+    borderTopColor: Colors.border,
   },
   noteLabel: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.xs,
-    fontWeight: "700",
-    color: colors.textMuted,
+    fontFamily: Fonts.sansBold,
+    fontSize: 11,
+    color: Colors.slate,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 4,
   },
   noteText: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.forest,
     lineHeight: 20,
     fontStyle: "italic",
   },

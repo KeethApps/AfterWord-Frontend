@@ -1,35 +1,41 @@
-/**
- * EmptyState — displayed when a section has no content yet.
- * Features FolioFox, a descriptive message, and an optional CTA.
- */
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { colors, spacing, radius, typography } from "../theme";
+import { Colors, Fonts, Spacing } from "../../constants/theme";
 import { FolioFox } from "./FolioFox";
+import { Ionicons } from "@expo/vector-icons";
 
 type FoxMood = "reading" | "happy" | "thinking" | "waving" | "laptop" | "sad";
 
 interface EmptyStateProps {
   title: string;
-  description: string;
+  description?: string;
+  message?: string;
   ctaLabel?: string;
   onCta?: () => void;
   foxVariant?: FoxMood;
+  icon?: keyof typeof Ionicons.glyphMap;
 }
 
 export function EmptyState({
   title,
   description,
+  message,
   ctaLabel,
   onCta,
-  foxVariant = "reading",
+  foxVariant,
+  icon,
 }: EmptyStateProps) {
+  const bodyText = description || message;
   return (
     <View style={styles.container}>
-      <FolioFox size={120} variant={foxVariant} style={styles.fox} />
+      {icon ? (
+        <Ionicons name={icon} size={64} color={Colors.slate} style={styles.icon} />
+      ) : (
+        <FolioFox size={120} variant={foxVariant || "reading"} style={styles.fox} />
+      )}
 
       <Text style={styles.title}>{title}</Text>
-      <Text style={styles.description}>{description}</Text>
+      {bodyText && <Text style={styles.description}>{bodyText}</Text>}
 
       {ctaLabel && onCta && (
         <Pressable
@@ -50,51 +56,52 @@ export function EmptyState({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: spacing[16],
-    paddingHorizontal: spacing[8],
+    paddingVertical: Spacing.s32,
+    paddingHorizontal: Spacing.s16,
   },
   fox: {
-    marginBottom: spacing[5],
+    marginBottom: Spacing.s20,
+  },
+  icon: {
+    marginBottom: Spacing.s20,
+    opacity: 0.8,
   },
   title: {
-    fontFamily: typography.fonts.display,
-    fontSize: typography.sizes.xl,
-    fontWeight: "600",
-    color: colors.textPrimary,
+    fontFamily: Fonts.serifBold,
+    fontSize: 24,
+    color: Colors.forest,
     textAlign: "center",
-    marginBottom: spacing[2],
+    marginBottom: Spacing.s8,
     letterSpacing: -0.2,
   },
   description: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.base,
-    color: colors.textMuted,
+    fontFamily: Fonts.sans,
+    fontSize: 16,
+    color: Colors.slate,
     textAlign: "center",
     lineHeight: 24,
     maxWidth: 320,
-    marginBottom: spacing[6],
+    marginBottom: Spacing.s24,
   },
   cta: {
-    backgroundColor: colors.forest,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[6],
-    borderRadius: radius.btn,
+    backgroundColor: Colors.forest,
+    paddingVertical: Spacing.s12,
+    paddingHorizontal: Spacing.s24,
+    borderRadius: 8,
   },
   ctaHovered: {
-    backgroundColor: colors.primaryHover,
+    backgroundColor: Colors.forest, // can add hover color later
   },
   ctaPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.98 }],
   },
   ctaText: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.base,
-    fontWeight: "600",
-    color: colors.textInverse,
+    fontFamily: Fonts.sansBold,
+    fontSize: 16,
+    color: Colors.white,
     letterSpacing: 0.2,
   },
 });

@@ -1,4 +1,3 @@
-export { Sidebar } from "./Sidebar";
 export { AppHeader } from "./AppHeader";
 export { ScreenContainer } from "./ScreenContainer";
 export { SectionHeader } from "./SectionHeader";

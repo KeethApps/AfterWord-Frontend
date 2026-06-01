@@ -43,3 +43,45 @@ export const Fonts = Platform.select({
     serifBold: 'Lora_700Bold, Georgia, "Times New Roman", serif',
   },
 });
+export const Spacing = {
+  s4: 4,
+  s8: 8,
+  s12: 12,
+  s16: 16,
+  s20: 20,
+  s24: 24,
+  s32: 32,
+  s40: 40,
+};
+
+export const Radius = {
+  s4: 4,
+  s8: 8,
+  s12: 12,
+  s16: 16,
+  full: 9999,
+};
+
+export const Shadows = {
+  sm: {
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+
+  md: {
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+};

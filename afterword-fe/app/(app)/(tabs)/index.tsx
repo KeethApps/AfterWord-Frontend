@@ -1,32 +1,29 @@
-import React from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Platform,
-  Image,
-} from "react-native";
+import React, { useState } from "react";
+import { View, Text, ScrollView, StyleSheet, Image, Platform, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Fonts } from "../../../constants/theme";
+import { useRouter } from "expo-router";
+import { Colors, Fonts, Spacing } from "../../../constants/theme";
+import { ScreenContainer } from "../../../src/components/ScreenContainer";
+import { BookCover } from "../../../src/components/BookCover";
+import { HighlightCard } from "../../../src/components/HighlightCard";
+import { SectionHeader } from "../../../src/components/SectionHeader";
 
 const PLACEHOLDER_BOOKS = [
-  { title: "The Daily Stoic", author: "Ryan Holiday", highlights: 45 },
-  { title: "Atomic Habits", author: "James Clear", highlights: 68 },
-  { title: "The Midnight Library", author: "Matt Haig", highlights: 31 },
-  { title: "Deep Work", author: "Cal Newport", highlights: 24 },
+  { id: "1", title: "The Daily Stoic", author: "Ryan Holiday", highlights: 45 },
+  { id: "2", title: "Atomic Habits", author: "James Clear", highlights: 68 },
+  { id: "3", title: "The Midnight Library", author: "Matt Haig", highlights: 31 },
+  { id: "4", title: "Deep Work", author: "Cal Newport", highlights: 24 },
 ];
 
 const PLACEHOLDER_HIGHLIGHTS = [
   {
-    quote: '"Discipline is the bridge between goals and accomplishment."',
+    quote: "Discipline is the bridge between goals and accomplishment.",
     bookTitle: "Atomic Habits",
     page: 45,
     timeAgo: "2h ago",
   },
   {
-    quote:
-      '"You do not rise to the level of your goals. You fall to the level of your systems."',
+    quote: "You do not rise to the level of your goals. You fall to the level of your systems.",
     bookTitle: "Atomic Habits",
     page: 27,
     timeAgo: "1d ago",
@@ -34,131 +31,119 @@ const PLACEHOLDER_HIGHLIGHTS = [
 ];
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   return (
-    <View style={styles.screen}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header section */}
-        <View style={styles.header}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={18} color={Colors.slate} />
-            <Text style={styles.searchText}>
-              Search your library...
-            </Text>
-          </View>
-          <View style={styles.headerIcons}>
+    <ScreenContainer>
+      {/* Header section */}
+      <View style={styles.header}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={18} color={Colors.slate} />
+          <Text style={styles.searchText}>
+            Search your library...
+          </Text>
+        </View>
+        <View style={styles.headerIcons}>
+          <Pressable onPress={() => setIsDropdownOpen(!isDropdownOpen)}>
             <Image
               source={require("../../../assets/fox/fox-icon.png")}
               style={styles.avatarImage}
               resizeMode="contain"
             />
-          </View>
+          </Pressable>
+          {isDropdownOpen && (
+            <View style={styles.dropdown}>
+              <Pressable style={styles.dropdownItem} onPress={() => setIsDropdownOpen(false)}>
+                <Ionicons name="person-outline" size={18} color={Colors.forest} />
+                <Text style={styles.dropdownText}>Account</Text>
+              </Pressable>
+              <Pressable 
+                style={styles.dropdownItem} 
+                onPress={() => {
+                  setIsDropdownOpen(false);
+                  router.push("/settings");
+                }}
+              >
+                <Ionicons name="settings-outline" size={18} color={Colors.forest} />
+                <Text style={styles.dropdownText}>Settings</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
+      </View>
 
-        <View style={styles.greeting}>
-          <Text style={styles.greetingTitle}>Good morning, Sam</Text>
-          <Text style={styles.greetingSub}>
-            Let's continue your reading journey.
-          </Text>
-        </View>
+      <View style={styles.greeting}>
+        <Text style={styles.greetingTitle}>Good morning, Sam</Text>
+        <Text style={styles.greetingSub}>
+          Let's continue your reading journey.
+        </Text>
+      </View>
 
-        {/* Daily Highlight */}
-        <View style={styles.dailyHighlight}>
-          <View style={styles.dailyHeader}>
-            <Ionicons name="star" size={16} color={Colors.gold} />
-            <Text style={styles.dailyTitle}>Daily Highlight</Text>
-          </View>
-          <Text style={styles.dailyQuote}>
-            "The world is a book, and those who do not travel read only one
-            page."
-          </Text>
-          <Text style={styles.dailyAuthor}>— Saint Augustine</Text>
-          {/* Placeholder for fox illustration */}
-          <Image
-            source={require("../../../assets/fox/fox-reading.png")}
-            style={styles.foxIllustration}
-            resizeMode="contain"
-          />
-        </View>
+      {/* Daily Highlight */}
+      <View style={styles.dailyHighlightContainer}>
+        <HighlightCard
+          featured={true}
+          quote="The world is a book, and those who do not travel read only one page."
+          bookTitle="Saint Augustine"
+          onPress={() => {}}
+        />
+        {/* Decorative Fox */}
+        <Image
+          source={require("../../../assets/fox/fox-reading.png")}
+          style={styles.foxIllustration}
+          resizeMode="contain"
+        />
+      </View>
 
-        {/* Recent Reads */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Reads</Text>
-            <Text style={styles.viewAll}>View all</Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bookRow}
-          >
-            {PLACEHOLDER_BOOKS.map((book) => (
-              <View key={book.title} style={styles.bookCard}>
-                <View style={styles.bookCover}>
-                  <Text style={styles.coverTitle}>
-                    {book.title.toUpperCase()}
-                  </Text>
-                </View>
-                <Text style={styles.bookTitle} numberOfLines={1}>
-                  {book.title}
-                </Text>
-                <Text style={styles.bookAuthor} numberOfLines={1}>
-                  {book.author}
-                </Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
+      {/* Recent Reads */}
+      <View style={styles.section}>
+        <SectionHeader title="Recent Reads" onViewAll={() => {}} />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.bookRow}
+        >
+          {PLACEHOLDER_BOOKS.map((book) => (
+            <View key={book.title} style={styles.bookCardWrapper}>
+              <BookCover
+                id={book.id}
+                title={book.title}
+                author={book.author}
+                highlightCount={book.highlights}
+              />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
 
-        {/* Recent Highlights */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Highlights</Text>
-            <Text style={styles.viewAll}>View all</Text>
-          </View>
-          <View style={styles.highlightList}>
-            {PLACEHOLDER_HIGHLIGHTS.map((h, i) => (
-              <View key={i} style={styles.highlightRow}>
-                <View style={styles.highlightContent}>
-                  <Text style={styles.highlightQuote}>{h.quote}</Text>
-                  <Text style={styles.highlightMeta}>
-                    {h.bookTitle} • Page {h.page}
-                  </Text>
-                </View>
-                <Text style={styles.highlightTime}>{h.timeAgo}</Text>
-              </View>
-            ))}
-          </View>
+      {/* Recent Highlights */}
+      <View style={styles.section}>
+        <SectionHeader title="Recent Highlights" onViewAll={() => {}} />
+        <View style={styles.highlightList}>
+          {PLACEHOLDER_HIGHLIGHTS.map((h, i) => (
+            <View key={i} style={styles.highlightWrapper}>
+              <HighlightCard
+                quote={h.quote}
+                bookTitle={h.bookTitle}
+                page={h.page}
+              />
+              <Text style={styles.highlightTime}>{h.timeAgo}</Text>
+            </View>
+          ))}
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.cream,
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    padding: Platform.OS === "web" ? 40 : 20,
-    paddingTop: Platform.OS === "web" ? 32 : 60, // accommodate safe area roughly
-    paddingBottom: 40,
-    maxWidth: 800,
-    marginHorizontal: Platform.OS === "web" ? "auto" : 0,
-    width: "100%",
-  },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 40,
-    gap: 16,
+    marginBottom: Spacing.s40,
+    gap: Spacing.s16,
+    zIndex: 50,
   },
   searchContainer: {
     flex: 1,
@@ -168,9 +153,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: Spacing.s16,
+    paddingVertical: Spacing.s12,
+    gap: Spacing.s12,
   },
   searchText: {
     fontFamily: Fonts.sans,
@@ -178,166 +163,95 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   headerIcons: {
+    position: "relative",
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: Spacing.s16,
   },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.border,
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderBlockColor: Colors.black,
+    borderRadius: 2,
+  },
+  dropdown: {
+    position: "absolute",
+    top: 72,
+    right: 0,
+    backgroundColor: Colors.white,
+    borderRadius: 8,
+    paddingVertical: 8,
+    minWidth: 160,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    zIndex: 100,
+  },
+  dropdownItem: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  dropdownText: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.forest,
   },
   greeting: {
-    marginBottom: 32,
+    marginBottom: Spacing.s32,
   },
   greetingTitle: {
     fontFamily: Fonts.serif,
     fontSize: 28,
     color: Colors.forest,
-    marginBottom: 8,
+    marginBottom: Spacing.s8,
   },
   greetingSub: {
     fontFamily: Fonts.sans,
     fontSize: 16,
     color: Colors.slate,
   },
-  dailyHighlight: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 40,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  dailyHighlightContainer: {
+    marginBottom: Spacing.s40,
     position: "relative",
-    overflow: "hidden",
+    zIndex: 1,
   },
-  dailyHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
+  foxIllustration: {
+    position: "absolute",
+    bottom: -10,
+    right: 16,
+    width: 80,
+    height: 80,
+    zIndex: 10,
   },
-  dailyTitle: {
-    fontFamily: Fonts.sans,
-    fontWeight: "600",
-    fontSize: 14,
-    color: Colors.forest,
-  },
-  dailyQuote: {
-    fontFamily: Fonts.serif,
-    fontSize: 20,
-    color: Colors.forest,
-    lineHeight: 30,
-    marginBottom: 16,
-    maxWidth: "80%",
-  },
-  dailyAuthor: {
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    color: Colors.slate,
-  },
-foxIllustration: {
-  width: 100,
-  height: 100,
-  alignSelf: "flex-end",
-  marginRight: 16,
-  marginBottom: 24,
-},
   section: {
-    marginBottom: 40,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontFamily: Fonts.sans,
-    fontWeight: "600",
-    fontSize: 16,
-    color: Colors.forest,
-  },
-  viewAll: {
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    color: Colors.slate,
+    marginBottom: Spacing.s40,
   },
   bookRow: {
-    gap: 16,
-    paddingRight: 20,
+    gap: Spacing.s16,
+    paddingRight: Spacing.s20,
   },
-  bookCard: {
-    width: 100,
-    marginRight: 16,
-  },
-  bookCover: {
-    width: 100,
-    height: 140,
-    backgroundColor: "#EBE6D8",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    justifyContent: "center",
-  },
-  coverTitle: {
-    fontFamily: Fonts.serifBold,
-    fontSize: 12,
-    color: Colors.forest,
-    textAlign: "center",
-    lineHeight: 16,
-  },
-  bookTitle: {
-    fontFamily: Fonts.sans,
-    fontWeight: "600",
-    fontSize: 13,
-    color: Colors.forest,
-    marginBottom: 2,
-  },
-  bookAuthor: {
-    fontFamily: Fonts.sans,
-    fontSize: 11,
-    color: Colors.slate,
+  bookCardWrapper: {
+    marginRight: Spacing.s16,
   },
   highlightList: {
-    gap: 1, // acts as divider if wrapper has bg
+    gap: Spacing.s16,
   },
-  highlightRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  highlightContent: {
-    flex: 1,
-    paddingRight: 16,
-  },
-  highlightQuote: {
-    fontFamily: Fonts.sans,
-    fontWeight: "500",
-    fontSize: 15,
-    color: Colors.forest,
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  highlightMeta: {
-    fontFamily: Fonts.sans,
-    fontSize: 13,
-    color: Colors.slate,
+  highlightWrapper: {
+    position: 'relative',
   },
   highlightTime: {
+    position: 'absolute',
+    top: Spacing.s20,
+    right: Spacing.s20,
     fontFamily: Fonts.sans,
     fontSize: 12,
     color: Colors.slate,
-  },
-  avatarImage: {
-    width: 64,
-    height: 64,
   },
 });

@@ -1,10 +1,7 @@
-/**
- * ScreenContainer — scrollable content wrapper for each screen.
- * Provides consistent padding and max-width behavior.
- */
 import React from "react";
-import { ScrollView, View, StyleSheet, ViewStyle } from "react-native";
-import { colors, spacing } from "../theme";
+import { ScrollView, View, StyleSheet, ViewStyle, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Colors } from "../../constants/theme";
 
 interface ScreenContainerProps {
   children: React.ReactNode;
@@ -19,6 +16,12 @@ export function ScreenContainer({
   scrollable = true,
   padded = true,
 }: ScreenContainerProps) {
+  const insets = useSafeAreaInsets();
+  
+  // The absolute mobile navbar is approx 90px tall (72px pill + 16px bottom padding).
+  // We add this to the contentContainerStyle paddingBottom so you can scroll to the very end.
+  const bottomPadding = Platform.OS === 'web' ? 40 : Math.max(insets.bottom, 16) + 80;
+
   const inner = (
     <View style={[styles.inner, padded && styles.padded, style]}>
       {children}
@@ -26,13 +29,17 @@ export function ScreenContainer({
   );
 
   if (!scrollable) {
-    return <View style={styles.container}>{inner}</View>;
+    return (
+      <View style={[styles.container, { paddingBottom: bottomPadding }]}>
+        {inner}
+      </View>
+    );
   }
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
       showsVerticalScrollIndicator={false}
     >
       {inner}
@@ -43,15 +50,19 @@ export function ScreenContainer({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: Colors.cream,
   },
   scrollContent: {
     flexGrow: 1,
   },
   inner: {
     flex: 1,
+    maxWidth: 1000,
+    alignSelf: 'center',
+    width: '100%',
   },
   padded: {
-    padding: spacing[8],
+    padding: Platform.OS === 'web' ? 40 : 20,
+    paddingTop: Platform.OS === 'web' ? 40 : 60,
   },
 });

@@ -1,11 +1,8 @@
-/**
- * Settings Screen — app preferences placeholder.
- */
 import React from "react";
 import { View, Text, StyleSheet, Switch } from "react-native";
-// import { AppHeader, Card, SectionHeader } from "../src/components";
 import { AppHeader, Card, SectionHeader } from "../../../src/components";
-import { colors, spacing, radius, typography } from "../../../src/theme";
+import { Colors, Fonts, Spacing } from "../../../constants/theme";
+import { ScreenContainer } from "../../../src/components/ScreenContainer";
 
 interface SettingRowProps {
   label: string;
@@ -25,8 +22,8 @@ function SettingRow({ label, description, value, onToggle }: SettingRowProps) {
         <Switch
           value={value}
           onValueChange={onToggle}
-          trackColor={{ false: colors.border, true: colors.forest }}
-          thumbColor={colors.surface}
+          trackColor={{ false: Colors.border, true: Colors.forest }}
+          thumbColor={Colors.white}
         />
       )}
     </View>
@@ -39,7 +36,7 @@ export default function SettingsScreen() {
   const [analytics, setAnalytics] = React.useState(false);
 
   return (
-    <View style={styles.screen}>
+    <ScreenContainer padded={false}>
       <AppHeader title="Settings" />
       <View style={styles.content}>
 
@@ -49,11 +46,11 @@ export default function SettingsScreen() {
           <Card elevated style={styles.card}>
             <View style={styles.profileRow}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>A</Text>
+                <Text style={styles.avatarText}>K</Text>
               </View>
               <View>
-                <Text style={styles.profileName}>AfterWord User</Text>
-                <Text style={styles.profileEmail}>user@example.com</Text>
+                <Text style={styles.profileName}>Keeth</Text>
+                <Text style={styles.profileEmail}>keeth@example.com</Text>
               </View>
             </View>
           </Card>
@@ -99,86 +96,81 @@ export default function SettingsScreen() {
         </View>
 
       </View>
-    </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   content: {
     flex: 1,
-    padding: spacing[8],
-    gap: spacing[6],
+    padding: Spacing.s20,
+    gap: Spacing.s24,
     maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
   },
   section: {
     gap: 0,
   },
   card: {
-    paddingHorizontal: spacing[5],
-    paddingVertical: spacing[2],
+    paddingHorizontal: Spacing.s20,
+    paddingVertical: Spacing.s8,
   },
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing[4],
-    paddingVertical: spacing[4],
+    gap: Spacing.s16,
+    paddingVertical: Spacing.s16,
   },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.forest,
+    backgroundColor: Colors.forest,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    fontFamily: typography.fonts.display,
-    fontSize: typography.sizes.xl,
-    fontWeight: "700",
-    color: colors.amber,
+    fontFamily: Fonts.serifBold,
+    fontSize: 24,
+    color: Colors.amber,
   },
   profileName: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.base,
-    fontWeight: "600",
-    color: colors.textPrimary,
+    fontFamily: Fonts.sansBold,
+    fontSize: 16,
+    color: Colors.forest,
   },
   profileEmail: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.slate,
     marginTop: 2,
   },
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: spacing[4],
-    gap: spacing[4],
+    paddingVertical: Spacing.s16,
+    gap: Spacing.s16,
   },
   settingInfo: {
     flex: 1,
   },
   settingLabel: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.base,
-    fontWeight: "500",
-    color: colors.textPrimary,
+    fontFamily: Fonts.sansBold,
+    fontSize: 16,
+    color: Colors.forest,
   },
   settingDesc: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.slate,
     marginTop: 3,
     lineHeight: 18,
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: -spacing[5],
+    backgroundColor: Colors.border,
+    marginHorizontal: -Spacing.s20,
   },
 });

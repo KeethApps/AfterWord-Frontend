@@ -34,9 +34,10 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
     switch (routeName) {
       case 'library': return isFocused ? 'library' : 'library-outline';
       case 'search': return isFocused ? 'search' : 'search-outline';
+      case 'highlights': return isFocused ? 'bookmarks' : 'bookmarks-outline';
       case 'index': return isFocused ? 'home' : 'home-outline';
       case 'upload': return isFocused ? 'cloud-upload' : 'cloud-upload-outline';
-      case 'settings': return isFocused ? 'settings' : 'settings-outline';
+
       default: return 'ellipse';
     }
   };
@@ -90,21 +91,6 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
               </Pressable>
             );
           })}
-        </View>
-
-        <View style={styles.sidebarFooter}>
-           {/* Placeholder for User Profile */}
-           <View style={[styles.userProfile, isSidebarCollapsed && styles.userProfileCollapsed]}>
-             <View style={styles.avatar}>
-               <Text style={styles.avatarText}>🦊</Text>
-             </View>
-             {!isSidebarCollapsed && (
-               <View style={styles.userInfo}>
-                 <Text style={styles.userName}>Keeth Reader</Text>
-                 <Text style={styles.userEmail}>keeth@afterword.com</Text>
-               </View>
-             )}
-           </View>
         </View>
       </View>
     );

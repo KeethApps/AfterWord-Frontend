@@ -1,23 +1,15 @@
-/**
- * AppHeader — top bar shown in the main content area.
- * Displays page title, optional subtitle, and action slot.
- */
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { colors, spacing, typography } from "../theme";
+import { View, Text, StyleSheet } from "react-native";
+import { Colors, Fonts, Spacing } from "../../constants/theme";
 
 interface AppHeaderProps {
   title: string;
   subtitle?: string;
-  rightSlot?: React.ReactNode;
-  showNotification?: boolean;
 }
 
 export function AppHeader({
   title,
   subtitle,
-  rightSlot,
-  showNotification = false,
 }: AppHeaderProps) {
   return (
     <View style={styles.header}>
@@ -25,78 +17,33 @@ export function AppHeader({
         <Text style={styles.title}>{title}</Text>
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
       </View>
-
-      <View style={styles.actions}>
-        {rightSlot}
-        {/* Notification bell */}
-        <Pressable
-          style={({ hovered }) => [styles.iconBtn, hovered && styles.iconBtnHovered]}
-          accessibilityLabel="Notifications"
-        >
-          <Text style={styles.iconBtnText}>🔔</Text>
-          {showNotification && <View style={styles.notificationDot} />}
-        </Pressable>
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    height: spacing.headerHeight,
+    height: 64,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing[8],
+    paddingHorizontal: Spacing.s16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.background,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.cream,
   },
   titleArea: {
     flexDirection: "column",
   },
   title: {
-    fontFamily: typography.fonts.display,
-    fontSize: typography.sizes.xl,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    letterSpacing: -0.3,
+    fontFamily: Fonts.serifBold,
+    fontSize: 24,
+    color: Colors.forest,
   },
   subtitle: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    marginTop: 1,
-  },
-  actions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[2],
-  },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "transparent",
-    position: "relative",
-  },
-  iconBtnHovered: {
-    backgroundColor: colors.mist,
-  },
-  iconBtnText: {
-    fontSize: 16,
-  },
-  notificationDot: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.crimson,
-    borderWidth: 1.5,
-    borderColor: colors.background,
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.slate,
+    marginTop: 2,
   },
 });

@@ -1,10 +1,6 @@
-/**
- * SectionHeader — label row with optional "View all" action.
- * Used throughout Home and Library screens.
- */
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { colors, spacing, typography } from "../theme";
+import { Colors, Fonts, Spacing } from "../../constants/theme";
 
 interface SectionHeaderProps {
   title: string;
@@ -38,27 +34,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing[4],
+    marginBottom: Spacing.s16,
   },
   title: {
-    fontFamily: typography.fonts.display,
-    fontSize: typography.sizes.lg,
-    fontWeight: "600",
-    color: colors.textPrimary,
-    letterSpacing: -0.2,
+    fontFamily: Fonts.sansBold,
+    fontSize: 16,
+    color: Colors.forest,
   },
   viewAll: {
-    paddingVertical: spacing[1],
-    paddingHorizontal: spacing[2],
+    paddingVertical: Spacing.s4,
+    paddingHorizontal: Spacing.s8,
     borderRadius: 6,
   },
   viewAllHovered: {
-    backgroundColor: colors.mist,
+    backgroundColor: Colors.mist,
   },
   viewAllText: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.slate,
     fontWeight: "500",
   },
 });
