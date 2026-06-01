@@ -18,6 +18,11 @@ interface HighlightCardProps {
   author?: string;
   page?: number;
   onPress?: () => void;
+  isFavorite?: boolean;
+  onFavorite?: () => void;
+  onShare?: () => void;
+  featured?: boolean;
+  score?: number;
 }
 
 const afterwordLogo = require("../../assets/logo/afterword-watermark.png");
@@ -29,8 +34,11 @@ export function HighlightCard({
   author,
   page,
   onPress,
+  isFavorite = false,
+  onFavorite,
+  onShare,
 }: HighlightCardProps) {
-  const shareCardRef = useRef<ViewShot>(null);
+  const shareCardRef = useRef<any>(null);
 
   async function handleShare() {
     try {
@@ -63,7 +71,7 @@ export function HighlightCard({
           <View style={styles.bookRow}>
             <Ionicons name="book-outline" size={14} color={Colors.slate} />
             <Text style={styles.bookTitle} numberOfLines={1}>
-              {bookTitle}
+              {bookTitle} - {author}
             </Text>
           </View>
         </View>
@@ -75,9 +83,34 @@ export function HighlightCard({
             {author && <Text style={styles.author}>{author}</Text>}
             {page && <Text style={styles.page}>Page {page}</Text>}
           </View>
-          <Pressable onPress={handleShare} hitSlop={10}>
-            <Ionicons name="share-outline" size={18} color={Colors.slate} />
-          </Pressable>
+          <View style={styles.actions}>
+            <Pressable 
+              onPress={() => {
+                if (onFavorite) onFavorite();
+              }} 
+              hitSlop={10}
+              style={styles.actionBtn}
+            >
+              <Ionicons 
+                name={isFavorite ? "heart" : "heart-outline"} 
+                size={18} 
+                color={isFavorite ? Colors.danger : Colors.slate} 
+              />
+            </Pressable>
+            <Pressable 
+              onPress={() => {
+                if (onShare) {
+                  onShare();
+                } else {
+                  handleShare();
+                }
+              }} 
+              hitSlop={10}
+              style={styles.actionBtn}
+            >
+              <Ionicons name="share-outline" size={18} color={Colors.slate} />
+            </Pressable>
+          </View>
         </View>
       </Pressable>
 
@@ -85,9 +118,9 @@ export function HighlightCard({
       <View style={styles.hiddenContainer}>
         <ViewShot
           ref={shareCardRef}
-          collapsable={false}
           options={{ format: "png", quality: 1 }}
-          style={styles.shareCard}
+          style={styles.shareCard as any}
+          {...{ collapsable: false } as any}
         >
           {/* Top accent bar */}
           <View style={styles.shareTopBar} />
@@ -191,6 +224,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.slate,
     opacity: 0.7,
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  actionBtn: {
+    padding: 4,
   },
 
   // ── Share card ───────────────────────────────────────────────

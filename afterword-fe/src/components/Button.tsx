@@ -29,18 +29,18 @@ export function Button({
       onPress={disabled ? undefined : onPress}
       style={({ hovered, pressed }) => [
         styles.base,
-        styles[variant],
-        styles[`size_${size}`],
-        fullWidth && styles.fullWidth,
-        hovered && !disabled && styles[`${variant}_hovered` as keyof typeof styles],
-        pressed && !disabled && styles.pressed,
-        disabled && styles.disabled,
+        styles[variant as keyof typeof styles] as any,
+        styles[`size_${size}` as keyof typeof styles] as any,
+        fullWidth && (styles.fullWidth as any),
+        hovered && !disabled && (styles[`${variant}_hovered` as keyof typeof styles] as any),
+        pressed && !disabled && (styles.pressed as any),
+        disabled && (styles.disabled as any),
       ]}
       accessibilityRole="button"
       disabled={disabled}
     >
-      {icon && <Text style={[styles.icon, styles[`${variant}_text` as keyof typeof styles]]}>{icon}</Text>}
-      <Text style={[styles.label, styles[`${variant}_text` as keyof typeof styles], styles[`size_${size}_text` as keyof typeof styles]]}>
+      {icon && <Text style={[styles.icon, styles[`${variant}_text` as keyof typeof styles] as any]}>{icon}</Text>}
+      <Text style={[styles.label, styles[`${variant}_text` as keyof typeof styles] as any, styles[`size_${size}_text` as keyof typeof styles] as any]}>
         {label}
       </Text>
     </Pressable>

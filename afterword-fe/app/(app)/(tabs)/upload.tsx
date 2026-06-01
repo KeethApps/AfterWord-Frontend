@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { Button, FolioFox } from "../../../src/components";
+import { AppHeader } from "../../../src/components/AppHeader";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -338,9 +339,9 @@ export default function UploadScreen() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <ScreenContainer>
-      <Text style={styles.pageTitle}>Upload</Text>
-      <View style={styles.searchContainer}
+    <ScreenContainer padded={false}>
+      <AppHeader title="Upload" />
+      <ScrollView style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
@@ -369,8 +370,8 @@ export default function UploadScreen() {
                   <Text style={styles.dropText}>Tap to choose your file</Text>
                   <Text style={styles.dropHint}>My Clippings.txt only</Text>
                 </Pressable>
-                {/* Fox: neutral/reading pose while waiting */}
-                <FolioFox size={180} variant="default" style={styles.fox} />
+                {/* Fox: neutral/reading pose while waiting
+                <FolioFox size={180} variant="default" style={styles.fox} /> */}
                 <SectionLabel title="How it works" />
                 <View style={styles.card}>
                   {[
@@ -655,7 +656,7 @@ export default function UploadScreen() {
 
           </AnimatedPanel>
         </View>
-      </View>
+      </ScrollView>
     </ScreenContainer>
   );
 }
@@ -663,6 +664,9 @@ export default function UploadScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+  },
   scroll: {
     flexGrow: 1,
   },
@@ -671,14 +675,6 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     width: "100%",
     alignSelf: "center",
-  },
-
-  // Page title — identical to Search & Settings
-  pageTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 28,
-    color: Colors.forest,
-    marginBottom: Spacing.s8,
   },
   pageSubtitle: {
     fontFamily: Fonts.sans,

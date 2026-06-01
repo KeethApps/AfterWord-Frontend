@@ -11,9 +11,10 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
-import { ScreenContainer } from "../../../src/components/ScreenContainer";
+import { AppHeader } from "../../../src/components/AppHeader";
 import { HighlightCard } from "../../../src/components/HighlightCard";
 import { EmptyState } from "../../../src/components/EmptyState";
+import { ScreenContainer } from "../../../src/components/ScreenContainer";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -139,10 +140,11 @@ export default function HighlightsScreen() {
   const hasResults = recent.length > 0;
 
   return (
-    <ScreenContainer>
+    <ScreenContainer padded={false}>
       {/* Page title — matches search page */}
-      <Text style={styles.pageTitle}>Highlights</Text>
+      <AppHeader title="Highlights" />
 
+      <View style={{ padding: Spacing.s20, flex: 1 }}>
       {/* Search bar — identical pattern to search.tsx */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={18} color={Colors.slate} />
@@ -242,6 +244,9 @@ export default function HighlightsScreen() {
                   bookTitle={h.bookTitle}
                   author={h.author}
                   page={h.page}
+                  isFavorite={h.isFavorite}
+                  onFavorite={() => toggleFavorite(h.id)}
+                  onShare={() => {}}
                   onPress={() => {}}
                 />
               </FadeInItem>
@@ -261,6 +266,7 @@ export default function HighlightsScreen() {
           </View>
         )}
       </View>
+      </View>
     </ScreenContainer>
   );
 }
@@ -268,14 +274,6 @@ export default function HighlightsScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  // Title — matches search.tsx exactly
-  pageTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 28,
-    color: Colors.forest,
-    marginBottom: Spacing.s24,
-  },
-
   // Search bar — identical to search.tsx
   searchContainer: {
     flexDirection: "row",

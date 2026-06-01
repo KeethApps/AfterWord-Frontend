@@ -1,6 +1,6 @@
 // /components/Auth.tsx
 import React, { useState } from 'react'
-import { Alert, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { Alert, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native'
 import { supabase } from '../lib/supabase'
 
 export default function Auth() {
@@ -74,3 +74,38 @@ export default function Auth() {
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+  },
+  verticallySpaced: {
+    marginVertical: 10,
+  },
+  mt20: {
+    marginTop: 20,
+  },
+  label: {
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    borderRadius: 5,
+  },
+  button: {
+    backgroundColor: '#007bff',
+    padding: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    backgroundColor: '#cccccc',
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
+});

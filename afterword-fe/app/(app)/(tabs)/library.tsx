@@ -11,9 +11,10 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
+
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
+import { AppHeader } from "../../../src/components/AppHeader";
 import { BookCover } from "../../../src/components/BookCover";
 
 /**
@@ -253,165 +254,165 @@ export default function LibraryScreen() {
    */
 
   return (
-    <ScreenContainer>
-      <Text style={styles.pageTitle}>Library</Text>
-
-      {/* Toolbar */}
-      <View style={styles.toolbar}>
-        <View style={styles.searchContainer}>
-          <Ionicons
-            name="search"
-            size={18}
-            color={Colors.slate}
-          />
-
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search books..."
-            placeholderTextColor={Colors.slate}
-            style={styles.searchInput}
-          />
-        </View>
-
-      </View>
-
-      {/* Filter Row */}
-      <View style={styles.filterRow}>
-        <View style={{ position: "relative" }}>
-          <Pressable
-            style={styles.dropdown}
-            onPress={() =>
-              setShowDropdown(!showDropdown)
-            }
-          >
-            <Text style={styles.dropdownText}>
-              Sort by{" "}
-              {sortMode === "title"
-                ? "Title"
-                : "Author"}
-            </Text>
-
+    <ScreenContainer padded={false}>
+      <AppHeader title="Library" />
+      
+      <View style={{ padding: Spacing.s20, flex: 1 }}>
+        <View style={styles.toolbar}>
+          <View style={styles.searchContainer}>
             <Ionicons
-              name="chevron-down"
-              size={16}
-              color={Colors.forest}
+              name="search"
+              size={18}
+              color={Colors.slate}
             />
-          </Pressable>
 
-          {showDropdown && (
-            <View style={styles.dropdownMenu}>
-              <Pressable
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setSortMode("title");
-                  setShowDropdown(false);
-                }}
-              >
-                <Text style={styles.dropdownItemText}>
-                  Title
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setSortMode("author");
-                  setShowDropdown(false);
-                }}
-              >
-                <Text style={styles.dropdownItemText}>
-                  Author
-                </Text>
-              </Pressable>
-            </View>
-          )}
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search books..."
+              placeholderTextColor={Colors.slate}
+              style={styles.searchInput}
+            />
+          </View>
         </View>
 
-        <View style={styles.viewToggles}>
-          <Pressable
-            onPress={() => setViewMode("grid")}
-          >
-            <Ionicons
-              name="grid"
-              size={20}
-              color={
-                viewMode === "grid"
-                  ? Colors.forest
-                  : Colors.slate
+        {/* Filter Row */}
+        <View style={styles.filterRow}>
+          <View style={{ position: "relative" }}>
+            <Pressable
+              style={styles.dropdown}
+              onPress={() =>
+                setShowDropdown(!showDropdown)
               }
-            />
-          </Pressable>
-
-          <Pressable
-            onPress={() => setViewMode("list")}
-            style={{ marginLeft: 16 }}
-          >
-            <Ionicons
-              name="list"
-              size={20}
-              color={
-                viewMode === "list"
-                  ? Colors.forest
-                  : Colors.slate
-              }
-            />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* WEB GRID */}
-      {viewMode === "grid" &&
-      Platform.OS === "web" ? (
-        <View style={styles.webGrid}>
-          {filteredBooks.map((item) => (
-            <View
-              key={item.id}
-              style={[
-                styles.webGridItem,
-                {
-                  width: webItemWidth,
-                },
-              ]}
             >
-              <BookCover
-                id={item.id}
-                title={item.title}
-                author={item.author}
-                highlightCount={
-                  item.highlights
-                }
-                coverColor={item.coverColor}
-                fullWidth
+              <Text style={styles.dropdownText}>
+                Sort by{" "}
+                {sortMode === "title"
+                  ? "Title"
+                  : "Author"}
+              </Text>
+
+              <Ionicons
+                name="chevron-down"
+                size={16}
+                color={Colors.forest}
               />
-            </View>
-          ))}
+            </Pressable>
+
+            {showDropdown && (
+              <View style={styles.dropdownMenu}>
+                <Pressable
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setSortMode("title");
+                    setShowDropdown(false);
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>
+                    Title
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setSortMode("author");
+                    setShowDropdown(false);
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>
+                    Author
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.viewToggles}>
+            <Pressable
+              onPress={() => setViewMode("grid")}
+            >
+              <Ionicons
+                name="grid"
+                size={20}
+                color={
+                  viewMode === "grid"
+                    ? Colors.forest
+                    : Colors.slate
+                }
+              />
+            </Pressable>
+
+            <Pressable
+              onPress={() => setViewMode("list")}
+              style={{ marginLeft: 16 }}
+            >
+              <Ionicons
+                name="list"
+                size={20}
+                color={
+                  viewMode === "list"
+                    ? Colors.forest
+                    : Colors.slate
+                }
+              />
+            </Pressable>
+          </View>
         </View>
-      ) : (
-        <FlatList
-          data={filteredBooks}
-          scrollEnabled={false}
-          nestedScrollEnabled
-          key={viewMode}
-          keyExtractor={(item) => item.id}
-          renderItem={
-            viewMode === "grid"
-              ? renderGridItem
-              : renderListItem
-          }
-          numColumns={
-            viewMode === "grid" ? 2 : 1
-          }
-          columnWrapperStyle={
-            viewMode === "grid"
-              ? styles.gridRow
-              : undefined
-          }
-          contentContainerStyle={{
-            paddingBottom: 120,
-          }}
-        />
-      )}
+
+        {/* WEB GRID */}
+        {viewMode === "grid" &&
+        Platform.OS === "web" ? (
+          <View style={styles.webGrid}>
+            {filteredBooks.map((item) => (
+              <View
+                key={item.id}
+                style={[
+                  styles.webGridItem,
+                  {
+                    width: webItemWidth as any,
+                  },
+                ]}
+              >
+                <BookCover
+                  id={item.id}
+                  title={item.title}
+                  author={item.author}
+                  highlightCount={
+                    item.highlights
+                  }
+                  coverColor={item.coverColor}
+                  fullWidth
+                />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <FlatList
+            data={filteredBooks}
+            scrollEnabled={false}
+            nestedScrollEnabled
+            key={viewMode}
+            keyExtractor={(item) => item.id}
+            renderItem={
+              viewMode === "grid"
+                ? renderGridItem
+                : renderListItem
+            }
+            numColumns={
+              viewMode === "grid" ? 2 : 1
+            }
+            columnWrapperStyle={
+              viewMode === "grid"
+                ? styles.gridRow
+                : undefined
+            }
+            contentContainerStyle={{
+              paddingBottom: 120,
+            }}
+          />
+        )}
+      </View>
     </ScreenContainer>
   );
 }
@@ -423,12 +424,6 @@ export default function LibraryScreen() {
  */
 
 const styles = StyleSheet.create({
-  pageTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 28,
-    color: Colors.forest,
-    marginBottom: Spacing.s24,
-  },
 
   toolbar: {
     flexDirection: "row",

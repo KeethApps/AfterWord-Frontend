@@ -7,6 +7,7 @@ import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { BookCover } from "../../../src/components/BookCover";
 import { HighlightCard } from "../../../src/components/HighlightCard";
 import { SectionHeader } from "../../../src/components/SectionHeader";
+import { AppHeader } from "@/src/components";
 
 const PLACEHOLDER_BOOKS = [
   { id: "1", title: "The Daily Stoic", author: "Ryan Holiday", highlights: 45 },
@@ -38,8 +39,10 @@ export default function HomeScreen() {
 
   return (
     <ScreenContainer>
+      <AppHeader title="AfterWord" subtitle="Remember What Matters" />
+
       {/* Header section */}
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={18} color={Colors.slate} />
           <Text style={styles.searchText}>
@@ -79,19 +82,19 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
-      </View>
+      </View> */}
 
       <View style={styles.greeting}>
+        
       <Image
-          source={require("../../../assets/fox/fox-reading.png")}
+          source={require("../../../assets/fox/paperfox-reading.png")}
           style={styles.foxIllustration}
           resizeMode="contain"
         />
         <Text style={styles.greetingTitle}>Good morning, Sam</Text>
         <Text style={styles.greetingSub}>
-          Let's continue your reading journey.
+          Onwards and AfterWords!
         </Text>
-                {/* Decorative Fox */}
 
       </View>
 
@@ -212,17 +215,19 @@ const styles = StyleSheet.create({
     color: Colors.forest,
   },
   greeting: {
-    marginBottom: Spacing.s32,
+    marginBottom: Spacing.s40,
   },
   greetingTitle: {
     fontFamily: Fonts.serif,
     fontSize: 28,
+    left: 100,
+    marginTop: Spacing.s12,
     color: Colors.forest,
-    marginBottom: Spacing.s8,
   },
   greetingSub: {
     fontFamily: Fonts.sans,
-    fontSize: 16,
+    fontSize: 14,
+    left: 100,
     color: Colors.slate,
   },
   dailyHighlightContainer: {
@@ -232,7 +237,9 @@ const styles = StyleSheet.create({
   },
   foxIllustration: {
     position: "absolute",
-    right: 0,
+    left: 0,
+    padding: Spacing.s10,
+    marginRight: 10,
     width: 100,
     height: 100,
   },

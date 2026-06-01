@@ -8,6 +8,9 @@ export const Colors = {
   white: '#faf8f3',
   slate: '#6B7280',
   border: '#E0D8C8',
+  mist: '#E8E2D5',
+  danger: '#D9383A',
+  amber: '#D97706',
   light: {
     text: '#1C1C1C',
     background: '#F5F1E8',
@@ -29,29 +32,36 @@ export const Colors = {
 export const Fonts = Platform.select({
   ios: {
     sans: 'Inter_400Regular',
+    sansBold: 'Inter_600SemiBold',
     serif: 'Lora_400Regular',
     serifBold: 'Lora_700Bold',
   },
   default: {
     sans: 'Inter_400Regular',
+    sansBold: 'Inter_600SemiBold',
     serif: 'Lora_400Regular',
     serifBold: 'Lora_700Bold',
   },
   web: {
     sans: 'Inter_400Regular, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    sansBold: 'Inter_600SemiBold, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
     serif: 'Lora_400Regular, Georgia, "Times New Roman", serif',
     serifBold: 'Lora_700Bold, Georgia, "Times New Roman", serif',
   },
 });
 export const Spacing = {
   s4: 4,
+  s6: 6,
   s8: 8,
+  s10: 10,
   s12: 12,
+  s14: 14,
   s16: 16,
   s20: 20,
   s24: 24,
   s32: 32,
   s40: 40,
+  s64: 64,
 };
 
 export const Radius = {

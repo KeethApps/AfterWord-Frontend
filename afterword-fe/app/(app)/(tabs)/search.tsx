@@ -8,9 +8,10 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
-import { ScreenContainer } from "../../../src/components/ScreenContainer";
+import { AppHeader } from "../../../src/components/AppHeader";
 import { HighlightCard } from "../../../src/components/HighlightCard";
 import { EmptyState } from "../../../src/components/EmptyState";
+import { ScreenContainer } from "../../../src/components/ScreenContainer";
 
 const SAMPLE_RESULTS = [
   {
@@ -43,9 +44,9 @@ export default function SearchScreen() {
   const [activeTab, setActiveTab] = useState(0);
 
   return (
-    <ScreenContainer>
-      <Text style={styles.pageTitle}>Search</Text>
-
+    <ScreenContainer padded={false}>
+      <AppHeader title="Search" />
+      <View style={{ padding: Spacing.s20, flex: 1 }}>
       {/* Search bar */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={18} color={Colors.slate} />
@@ -106,17 +107,12 @@ export default function SearchScreen() {
           />
         </View>
       )}
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  pageTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 28,
-    color: Colors.forest,
-    marginBottom: Spacing.s24,
-  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
