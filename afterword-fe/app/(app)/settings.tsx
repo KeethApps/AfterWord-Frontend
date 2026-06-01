@@ -8,9 +8,8 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Fonts, Spacing } from "../../../constants/theme";
-import { useRouter } from "expo-router";
-import { ScreenContainer } from "../../../src/components/ScreenContainer";
+import { Colors, Fonts, Spacing } from "../../constants/theme";
+import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -81,19 +80,21 @@ export default function SettingsScreen() {
   const [dailyHighlight, setDailyHighlight] = React.useState(true);
   const [offlineMode, setOfflineMode] = React.useState(true);
   const [analytics, setAnalytics] = React.useState(false);
-  const router = useRouter();
+
   return (
-    <ScreenContainer>
-      <Text style={styles.pageTitle}>Settings</Text>
-      
+    <ScreenContainer padded={false}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        // contentContainerStyle={[
-        //   styles.scroll,
-        //   { paddingBottom: Math.max(insets.bottom, 32) },
-        // ]}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: Math.max(insets.bottom, 32) },
+        ]}
       >
         <View style={styles.inner}>
+
+          {/* ── Page title (matches Search screen) ──────────────────────── */}
+          <Text style={styles.pageTitle}>Settings</Text>
+
           {/* ── Profile hero ─────────────────────────────────────────────── */}
           <View style={styles.profileHero}>
             <View style={styles.avatar}>
@@ -124,7 +125,7 @@ export default function SettingsScreen() {
           {/* ── Account ──────────────────────────────────────────────────── */}
           <SectionLabel title="Account" />
           <View style={styles.card}>
-            <NavRow icon="person-outline" label="Manage profile" onPress={() => router.push("/profile")}/>
+            <NavRow icon="person-outline" label="Manage profile" />
             <RowDivider />
             <NavRow icon="cloud-upload-outline" label="Export data" />
             <RowDivider />

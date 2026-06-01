@@ -1,7 +1,7 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { BlurView } from "expo-blur";
 import { Colors, Fonts, Spacing } from "../../constants/theme";
-
 import { useRouter } from "expo-router";
 
 interface BookCoverProps {
@@ -9,12 +9,11 @@ interface BookCoverProps {
   title: string;
   author: string;
   highlightCount: number;
-  coverColor?: string; // placeholder color
+  coverColor?: string;
   onPress?: () => void;
-  fullWidth?: boolean; // whether to fill the flex container instead of hardcoded width
+  fullWidth?: boolean;
 }
 
-// Deterministic placeholder color from title string
 function colorFromTitle(title: string): string {
   const palette = [
     Colors.forest, "#1A3D6F", "#6B2D2D", "#4A3D6B", "#2D5A3D",
@@ -25,39 +24,39 @@ function colorFromTitle(title: string): string {
   return palette[hash % palette.length];
 }
 
-export function BookCover({ id, title, author, highlightCount, coverColor, onPress, fullWidth = false }: BookCoverProps) {
+export function BookCover({
+  id,
+  title,
+  author,
+  highlightCount,
+  coverColor,
+  onPress,
+  fullWidth = false,
+}: BookCoverProps) {
   const router = useRouter();
   const bgColor = coverColor ?? colorFromTitle(title);
 
   const handlePress = () => {
-    if (onPress) {
-      onPress();
-    } else if (id) {
-      router.push(`/book/${id}`);
-    }
+    if (onPress) onPress();
+    else if (id) router.push(`/book/${id}`);
   };
 
   return (
     <Pressable
       onPress={handlePress}
-      style={({ hovered }) => [
-        styles.container,
-        fullWidth && { width: '100%' },
-        hovered && styles.containerHovered
-      ]}
+      style={[styles.container, fullWidth && styles.containerFull]}
     >
-      {/* Book cover */}
-      <View style={[styles.cover, { backgroundColor: bgColor, width: fullWidth ? '100%' : 110 }]}>
-        {/* Spine effect */}
-        <View style={[styles.spine, { backgroundColor: "rgba(0,0,0,0.2)" }]} />
-        {/* Title on cover */}
-        <Text style={styles.coverTitle} numberOfLines={3}>{title}</Text>
-        <Text style={styles.coverAuthor} numberOfLines={1}>{author}</Text>
+      <View style={[styles.cover, { backgroundColor: bgColor }]}>
+        <BlurView intensity={30} tint="light" style={styles.blurLayer}>
+          <Text style={styles.coverTitle} numberOfLines={3}>
+            {title}
+          </Text>
+          <Text style={styles.coverAuthor} numberOfLines={1}>
+            {author}
+          </Text>
+        </BlurView>
       </View>
 
-      {/* Metadata */}
-      <Text style={[styles.bookTitle, fullWidth && { width: '100%' }]} numberOfLines={1}>{title}</Text>
-      <Text style={[styles.bookAuthor, fullWidth && { width: '100%' }]} numberOfLines={1}>{author}</Text>
       <Text style={styles.highlights}>{highlightCount} highlights</Text>
     </Pressable>
   );
@@ -66,63 +65,42 @@ export function BookCover({ id, title, author, highlightCount, coverColor, onPre
 const styles = StyleSheet.create({
   container: {
     width: 110,
-    alignItems: "flex-start",
   },
-  containerHovered: {
-    transform: [{ translateY: -2 }],
+  containerFull: {
+    width: "100%",
   },
   cover: {
-    aspectRatio: 2/3,
-    borderRadius: 8,
-    marginBottom: Spacing.s8,
-    justifyContent: "flex-end",
-    padding: Spacing.s8,
-    shadowColor: "#000",
-    shadowOffset: { width: 2, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 4,
-    position: "relative",
+    width: "100%",
+    aspectRatio: 2 / 3,
+    borderRadius: 12,
     overflow: "hidden",
   },
-  spine: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 10,
-    borderTopLeftRadius: 8,
-    borderBottomLeftRadius: 8,
+  blurLayer: {
+    flex: 1,
+    padding: Spacing.s8, // Reduced padding
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(255,255,255,0.1)", // Light overlay for glass effect
   },
   coverTitle: {
     fontFamily: Fonts.serifBold,
     fontSize: 12,
-    color: "rgba(255,255,255,0.95)",
-    lineHeight: 16,
-    marginBottom: 4,
+    color: "#FFFFFF",
+    lineHeight: 14,
+    marginBottom: 2,
+    textShadowColor: "rgba(0,0,0,0.2)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   coverAuthor: {
     fontFamily: Fonts.sans,
     fontSize: 9,
-    color: "rgba(255,255,255,0.7)",
-  },
-  bookTitle: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 14,
-    color: Colors.forest,
-    width: 110,
-  },
-  bookAuthor: {
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-    color: Colors.slate,
-    marginTop: 1,
-    width: 110,
+    color: "rgba(255,255,255,0.8)",
   },
   highlights: {
     fontFamily: Fonts.sans,
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.slate,
-    marginTop: 3,
+    opacity: 0.7,
+    marginTop: Spacing.s4, // Tighter margin
   },
 });

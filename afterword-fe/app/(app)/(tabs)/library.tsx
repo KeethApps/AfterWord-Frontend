@@ -274,17 +274,6 @@ export default function LibraryScreen() {
           />
         </View>
 
-        <Pressable style={styles.addButton}>
-          <Ionicons
-            name="add"
-            size={16}
-            color={Colors.white}
-          />
-
-          <Text style={styles.addButtonText}>
-            Add Book
-          </Text>
-        </Pressable>
       </View>
 
       {/* Filter Row */}

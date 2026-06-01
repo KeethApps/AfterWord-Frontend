@@ -177,7 +177,6 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: 64,
     height: 64,
-    borderBlockColor: Colors.black,
     borderRadius: 2,
   },
   dropdown: {
@@ -230,10 +229,10 @@ const styles = StyleSheet.create({
   },
   foxIllustration: {
     position: "absolute",
-    bottom: -10,
+    bottom: -30,
     right: 16,
-    width: 80,
-    height: 80,
+    width: 100,
+    height: 100,
     zIndex: 10,
   },
   section: {

@@ -12,8 +12,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Colors, Fonts, Spacing } from "../constants/theme";
-import { ScreenContainer } from "../src/components/ScreenContainer";
+import { Colors, Fonts, Spacing } from "../../constants/theme";
+import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

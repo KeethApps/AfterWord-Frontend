@@ -40,7 +40,7 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: "#F5F1E8" },
         }}
       >
-        {/* <Stack.Screen name="(app)" /> */}
+        <Stack.Screen name="(app)" />
         {/* <Stack.Screen name="(auth)" /> */}
       </Stack>
     </>
