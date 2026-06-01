@@ -5,7 +5,7 @@ export const Colors = {
   cream: '#F5F1E8',
   gold: '#C89B3C',
   black: '#1C1C1C',
-  white: '#FAFBFC',
+  white: '#faf8f3',
   slate: '#6B7280',
   border: '#E0D8C8',
   light: {

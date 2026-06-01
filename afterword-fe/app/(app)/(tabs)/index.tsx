@@ -54,9 +54,15 @@ export default function HomeScreen() {
           </Pressable>
           {isDropdownOpen && (
             <View style={styles.dropdown}>
-              <Pressable style={styles.dropdownItem} onPress={() => setIsDropdownOpen(false)}>
+              <Pressable 
+                style={styles.dropdownItem} 
+                onPress={() => {
+                  setIsDropdownOpen(false);
+                  router.push("/profile");
+                }}
+              >
                 <Ionicons name="person-outline" size={18} color={Colors.forest} />
-                <Text style={styles.dropdownText}>Account</Text>
+                <Text style={styles.dropdownText}>Profile</Text>
               </Pressable>
               <Pressable 
                 style={styles.dropdownItem} 
@@ -98,7 +104,7 @@ export default function HomeScreen() {
 
       {/* Recent Reads */}
       <View style={styles.section}>
-        <SectionHeader title="Recent Reads" onViewAll={() => {}} />
+        <SectionHeader title="Recent Reads" onViewAll={() => {router.push("/library")}} />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -119,7 +125,7 @@ export default function HomeScreen() {
 
       {/* Recent Highlights */}
       <View style={styles.section}>
-        <SectionHeader title="Recent Highlights" onViewAll={() => {}} />
+        <SectionHeader title="Recent Highlights" onViewAll={() => {router.push("/highlights")}} />
         <View style={styles.highlightList}>
           {PLACEHOLDER_HIGHLIGHTS.map((h, i) => (
             <View key={i} style={styles.highlightWrapper}>

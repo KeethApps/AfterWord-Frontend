@@ -45,9 +45,6 @@ export default function BookDetailsScreen() {
     title: "Unknown Book", 
     author: "Unknown Author", 
     highlights: 0, 
-    rating: 0, 
-    reviews: 0, 
-    tags: [] 
   };
   
   const bgColor = colorFromTitle(book.title);
@@ -72,9 +69,9 @@ export default function BookDetailsScreen() {
             <Pressable onPress={() => router.back()} style={styles.iconButton}>
               <Ionicons name="chevron-back" size={28} color={Colors.white} />
             </Pressable>
-            <Pressable style={styles.iconButton}>
+            {/* <Pressable style={styles.iconButton}>
               <Ionicons name="bookmark-outline" size={24} color={Colors.white} />
-            </Pressable>
+            </Pressable> */}
           </View>
 
           {/* Book Cover */}
@@ -95,7 +92,7 @@ export default function BookDetailsScreen() {
             <Text style={styles.bookAuthor}>By {book.author}</Text>
 
             {/* Rating Row */}
-            <View style={styles.ratingRow}>
+            {/* <View style={styles.ratingRow}>
               <View style={styles.stars}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Ionicons 
@@ -111,7 +108,7 @@ export default function BookDetailsScreen() {
                 <Ionicons name="chatbubble-outline" size={16} color={Colors.slate} style={{ opacity: 0.5 }} />
                 <Text style={styles.reviewsText}>{book.highlights} Highlights</Text>
               </View>
-            </View>
+            </View> */}
 
             {/* Description Placeholder */}
             <Text style={styles.description}>
@@ -121,7 +118,7 @@ export default function BookDetailsScreen() {
             </Text>
 
             {/* Tags Row */}
-            {book.tags && book.tags.length > 0 && (
+            {/* {book.tags && book.tags.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsContainer}>
                 {book.tags.map((tag: string) => (
                   <View key={tag} style={styles.tagPill}>
@@ -129,7 +126,7 @@ export default function BookDetailsScreen() {
                   </View>
                 ))}
               </ScrollView>
-            )}
+            )} */}
 
             {/* Action Buttons */}
             <View style={styles.actionButtonsRow}>
