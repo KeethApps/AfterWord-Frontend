@@ -1,20 +1,31 @@
 import React from "react";
-import { Image, ImageStyle } from "react-native";
+import { Image, ImageStyle, ImageSourcePropType } from "react-native";
 
 interface FolioFoxProps {
   size?: number;
   style?: ImageStyle;
-  variant?: string;
+  variant?: "reading" | "waving" | "sleeping" | "thinking";
 }
+
+const foxVariants: Record<string, ImageSourcePropType> = {
+  default: require("../../assets/fox/fox-reading.png"),
+  laptop: require("../../assets/fox/fox-reading.png"),
+  happy: require("../../assets/fox/fox-reading.png"),
+  thinking: require("../../assets/fox/fox-reading.png"),
+  ghost: require("../../assets/fox/fox-reading.png"),
+  secondary: require("../../assets/fox/fox-reading.png"),
+  sad: require("../../assets/fox/fox-reading.png"),
+
+};
 
 export function FolioFox({
   size = 120,
   style,
-  variant,
+  variant = "reading",
 }: FolioFoxProps) {
   return (
     <Image
-      source={require("../../assets/fox/fox-reading.png")}
+      source={foxVariants[variant]}
       style={[
         {
           width: size,

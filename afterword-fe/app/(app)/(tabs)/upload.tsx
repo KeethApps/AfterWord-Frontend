@@ -392,8 +392,6 @@ export default function UploadScreen() {
       >
         <View style={styles.inner}>
 
-          {/* ── Page title — matches Search & Settings ─────────────────── */}
-
           <AnimatedPanel stateKey={state}>
 
             {/* ── Idle ───────────────────────────────────────────────────── */}

@@ -1,8 +1,16 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, Pressable, Modal, TouchableWithoutFeedback } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Pressable,
+} from "react-native";
+
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { Colors, Fonts, Spacing } from "../../constants/theme";
 
 interface AppHeaderProps {
@@ -17,129 +25,202 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
 
   return (
     <>
-      {/* Header Container */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      {/* Click-away backdrop */}
+      {isDropdownOpen && (
+        <Pressable
+          style={styles.backdrop}
+          onPress={() => setIsDropdownOpen(false)}
+        />
+      )}
+
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + Spacing.s12,
+          },
+        ]}
+      >
+        {/* Title */}
         <View style={styles.titleArea}>
           <Text style={styles.title}>{title}</Text>
-          {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+
+          {subtitle ? (
+            <Text style={styles.subtitle}>{subtitle}</Text>
+          ) : null}
         </View>
 
-        <View style={styles.headerIcons}>
-          <Pressable onPress={() => setIsDropdownOpen(true)}>
+        {/* Avatar + Dropdown */}
+        <View style={styles.avatarContainer}>
+          <Pressable
+            onPress={() => setIsDropdownOpen((prev) => !prev)}
+            style={({ pressed }) => [
+              styles.avatarButton,
+              pressed && { opacity: 0.8 },
+            ]}
+          >
             <Image
               source={require("../../assets/fox/fox-icon.png")}
               style={styles.avatarImage}
             />
           </Pressable>
+
+          {isDropdownOpen && (
+            <View style={styles.dropdown}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.dropdownItem,
+                  pressed && styles.dropdownItemPressed,
+                ]}
+                onPress={() => {
+                  setIsDropdownOpen(false);
+                  router.push("/profile");
+                }}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={18}
+                  color={Colors.forest}
+                />
+
+                <Text style={styles.dropdownText}>
+                  Profile
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.dropdownItem,
+                  pressed && styles.dropdownItemPressed,
+                ]}
+                onPress={() => {
+                  setIsDropdownOpen(false);
+                  router.push("/settings");
+                }}
+              >
+                <Ionicons
+                  name="settings-outline"
+                  size={18}
+                  color={Colors.forest}
+                />
+
+                <Text style={styles.dropdownText}>
+                  Settings
+                </Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
-
-      {/* Backdrop for closing dropdown */}
-      <Modal
-        visible={isDropdownOpen}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsDropdownOpen(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setIsDropdownOpen(false)}>
-          <View style={styles.backdrop} />
-        </TouchableWithoutFeedback>
-
-        {/* Dropdown Menu */}
-        <View style={[styles.dropdown, { top: insets.top + 60 }]}>
-          <Pressable
-            style={styles.dropdownItem}
-            onPress={() => {
-              setIsDropdownOpen(false);
-              router.push("/profile");
-            }}
-          >
-            <Ionicons name="person-outline" size={18} color={Colors.forest} />
-            <Text style={styles.dropdownText}>Profile</Text>
-          </Pressable>
-          <Pressable
-            style={styles.dropdownItem}
-            onPress={() => {
-              setIsDropdownOpen(false);
-              router.push("/settings");
-            }}
-          >
-            <Ionicons name="settings-outline" size={18} color={Colors.forest} />
-            <Text style={styles.dropdownText}>Settings</Text>
-          </Pressable>
-        </View>
-      </Modal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  backdrop: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 40,
+  },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: Spacing.s16,
+
+    paddingHorizontal: Spacing.s20,
     paddingBottom: Spacing.s16,
+
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+
     backgroundColor: Colors.cream,
+
+    zIndex: 50,
   },
+
   titleArea: {
-    flexDirection: "column",
+    flex: 1,
+    paddingRight: Spacing.s16,
   },
+
   title: {
     fontFamily: Fonts.serifBold,
-    fontSize: 24,
+    fontSize: 28,
     color: Colors.forest,
   },
+
   subtitle: {
+    marginTop: 2,
+
     fontFamily: Fonts.sans,
     fontSize: 14,
     color: Colors.slate,
-    marginTop: 2,
   },
-  headerIcons: {
-    flexDirection: "row",
-    alignItems: "center",
+
+  avatarContainer: {
+    position: "relative",
+    zIndex: 60,
   },
+
+  avatarButton: {
+    borderRadius: 999,
+  },
+
   avatarImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "rgba(0,0,0,0.1)",
-  },
-  backdrop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "transparent",
-  },
-  dropdown: {
-    position: "absolute",
-    right: Spacing.s16,
-    backgroundColor: Colors.white,
-    borderRadius: 10,
-    paddingVertical: 6,
-    minWidth: 160,
+    width: 52,
+    height: 52,
+    borderRadius: 999,
+
     borderWidth: 1,
     borderColor: Colors.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-    zIndex: 100,
+
+    backgroundColor: Colors.white,
   },
+
+  dropdown: {
+    position: "absolute",
+    top: 62,
+    right: 0,
+
+    width: 180,
+
+    backgroundColor: Colors.white,
+
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+
+    paddingVertical: 6,
+
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+
+    elevation: 12,
+  },
+
   dropdownItem: {
     flexDirection: "row",
     alignItems: "center",
+
+    gap: 12,
+
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 10,
+    paddingVertical: 12,
+
+    borderRadius: 12,
+    marginHorizontal: 6,
   },
+
+  dropdownItemPressed: {
+    backgroundColor: "rgba(0,0,0,0.04)",
+  },
+
   dropdownText: {
     fontFamily: Fonts.sans,
     fontSize: 14,

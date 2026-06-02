@@ -400,12 +400,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 12,
+    borderRadius: 45,
     paddingHorizontal: Spacing.s16,
-    paddingVertical: Spacing.s12,
+    paddingVertical: Spacing.s4,
     gap: Spacing.s12,
-  },
 
+  },
   searchInput: {
     flex: 1,
     fontFamily: Fonts.sans,
