@@ -72,14 +72,13 @@ const styles = StyleSheet.create({
   cover: {
     width: "100%",
     aspectRatio: 2 / 3,
-    borderRadius: 12,
+    borderRadius: Spacing.s4,
     overflow: "hidden",
   },
   blurLayer: {
     flex: 1,
-    padding: Spacing.s8, // Reduced padding
+    padding: Spacing.s10, // Reduced padding
     justifyContent: "flex-end",
-    backgroundColor: "rgba(255,255,255,0.1)", // Light overlay for glass effect
   },
   coverTitle: {
     fontFamily: Fonts.serifBold,

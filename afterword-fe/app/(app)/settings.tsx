@@ -206,8 +206,8 @@ return (
           <View style={styles.card}>
             <ToggleRow
               icon="sunny-outline"
-              label="Daily highlight"
-              description="Show a random highlight on the home screen."
+              label="Daily highlight email"
+              description="Send me an email of my daily highlight."
               value={dailyHighlight}
               onToggle={setDailyHighlight}
             />
@@ -366,13 +366,13 @@ const styles = StyleSheet.create({
     marginRight: Spacing.s16,
 
     borderWidth: 3,
-    borderColor: Colors.amber,
+    borderColor: Colors.gold,
   },
 
   avatarText: {
     fontFamily: Fonts.serifBold,
     fontSize: 30,
-    color: Colors.amber,
+    color: Colors.cream,
   },
 
   profileName: {
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     fontSize: 11,
 
-    color: Colors.amber,
+    color: Colors.gold,
 
     letterSpacing: 1,
     textTransform: "uppercase",
@@ -525,9 +525,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
 
     paddingHorizontal: Spacing.s18,
-    paddingVertical: Spacing.s18,
+    paddingVertical: Spacing.s20,
 
-    gap: Spacing.s14,
+    gap: Spacing.s32,
 
     backgroundColor: Colors.white,
   },
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
 
     backgroundColor: "#F0F4F0",
-
+    marginLeft: Spacing.s10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
 
     marginTop: 2,
 
-    lineHeight: 16,
+    lineHeight: 20,
   },
 
   rowValue: {
@@ -575,6 +575,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
 
     color: Colors.slate,
+
   },
 
   toggleInfo: {
@@ -586,7 +587,7 @@ const styles = StyleSheet.create({
 
     backgroundColor: Colors.border,
 
-    marginLeft: 64,
+    marginLeft: 0,
   },
 
   // ── Sign Out ────────────────────────────────────────────────────────────
@@ -600,7 +601,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.s32,
     marginBottom: Spacing.s32,
 
-    paddingVertical: Spacing.s18,
+    paddingVertical: Spacing.s24,
 
     borderRadius: 18,
 

@@ -1,39 +1,103 @@
-import React from "react";
-import { Image, ImageStyle, ImageSourcePropType } from "react-native";
+import React, { useEffect, useRef } from "react";
+import {
+Animated,
+Easing,
+ImageStyle,
+ImageSourcePropType,
+StyleProp,
+} from "react-native";
 
-interface FolioFoxProps {
-  size?: number;
-  style?: ImageStyle;
-  variant?: "reading" | "waving" | "sleeping" | "thinking";
-}
+// ─── Variants ────────────────────────────────────────────────────────────────
 
-const foxVariants: Record<string, ImageSourcePropType> = {
-  default: require("../../assets/fox/fox-reading.png"),
-  laptop: require("../../assets/fox/fox-reading.png"),
-  happy: require("../../assets/fox/fox-reading.png"),
-  thinking: require("../../assets/fox/fox-reading.png"),
-  ghost: require("../../assets/fox/fox-reading.png"),
-  secondary: require("../../assets/fox/fox-reading.png"),
-  sad: require("../../assets/fox/fox-waiting.png"),
+export type FolioFoxVariant =
+| "reading"
+| "waving"
+| "sleeping"
+| "thinking"
+| "happy"
+| "sad"
+| "laptop"
+| "ghost"
+| "secondary";
 
+const foxVariants: Record<FolioFoxVariant, ImageSourcePropType> = {
+reading: require("../../assets/fox/fox-reading.png"),
+waving: require("../../assets/fox/fox-books.png"),
+sleeping: require("../../assets/fox/fox-reading.png"),
+thinking: require("../../assets/fox/fox-reading.png"),
+happy: require("../../assets/fox/fox-reading.png"),
+sad: require("../../assets/fox/fox-waiting.png"),
+laptop: require("../../assets/fox/laptop.png"),
+ghost: require("../../assets/fox/fox-reading.png"),
+secondary: require("../../assets/fox/fox-reading.png"),
 };
 
+// ─── Props ───────────────────────────────────────────────────────────────────
+
+interface FolioFoxProps {
+size?: number;
+style?: StyleProp<ImageStyle>;
+variant?: FolioFoxVariant;
+
+// Optional animation toggle
+animated?: boolean;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export function FolioFox({
-  size = 120,
-  style,
-  variant = "reading",
+size = 120,
+style,
+variant = "reading",
+animated = true,
 }: FolioFoxProps) {
-  return (
-    <Image
-      source={foxVariants[variant]}
-      style={[
-        {
-          width: size,
-          height: size,
-          resizeMode: "contain",
-        },
-        style,
-      ]}
-    />
-  );
+// Subtle floating animation
+const floatAnim = useRef(new Animated.Value(0)).current;
+
+useEffect(() => {
+if (!animated) return;
+
+
+const loop = Animated.loop(
+  Animated.sequence([
+    Animated.timing(floatAnim, {
+      toValue: -5,
+      duration: 1800,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }),
+    Animated.timing(floatAnim, {
+      toValue: 0,
+      duration: 1800,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }),
+  ])
+);
+
+loop.start();
+
+return () => {
+  loop.stop();
+};
+
+
+}, [animated]);
+
+return (
+<Animated.Image
+source={foxVariants[variant]}
+resizeMode="contain"
+style={[
+{
+width: size,
+height: size,
+transform: animated
+? [{ translateY: floatAnim }]
+: undefined,
+},
+style,
+]}
+/>
+);
 }

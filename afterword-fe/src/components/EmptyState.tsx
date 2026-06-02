@@ -31,7 +31,7 @@ export function EmptyState({
       {icon ? (
         <Ionicons name={icon} size={64} color={Colors.slate} style={styles.icon} />
       ) : (
-        <FolioFox size={120} variant={foxVariant || "reading"} style={styles.fox} />
+        <FolioFox size={120} variant={foxVariant || "sad"} style={styles.fox} />
       )}
 
       <Text style={styles.title}>{title}</Text>

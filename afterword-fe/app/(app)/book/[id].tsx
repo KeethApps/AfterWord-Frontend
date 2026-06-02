@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, Platform, useWindowDimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable, Platform, useWindowDimensions, ImageBackground } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { HighlightCard } from "../../../src/components/HighlightCard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BookCover } from "@/src/components";
 
 // Deterministic placeholder color from title string (copied from BookCover)
 function colorFromTitle(title: string): string {
@@ -63,7 +64,16 @@ export default function BookDetailsScreen() {
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
       >
         {/* Top Colored Background Area */}
-        <View style={[styles.topBackground, { backgroundColor: bgColor, paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={[styles.topBackground, { paddingTop: Math.max(insets.top, 20) }]}>
+  {/* The Background Image Layer */}
+  <ImageBackground 
+    source={require("../../../assets/fox/fox-bg.png")} // Use dynamic URL/require here
+    style={StyleSheet.absoluteFill}
+    resizeMode="cover"
+  >
+    {/* Dark Overlay for readability */}
+    <View style={styles.imageOverlay} />
+  </ImageBackground>
           {/* Header Navigation */}
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.iconButton}>
@@ -83,7 +93,7 @@ export default function BookDetailsScreen() {
             </View>
           </View>
         </View>
-
+        
         {/* Bottom White Sheet */}
         <View style={styles.bottomSheet}>
           <View style={styles.contentContainer}>
@@ -168,9 +178,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.white,
   },
-  topBackground: {
+topBackground: {
     alignItems: 'center',
-    paddingBottom: 80, // Extra padding so cover can overlap
+    paddingBottom: 80,
+    overflow: 'hidden', // Required to clip the ImageBackground
+    backgroundColor: Colors.forest, // Fallback color
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Adjust opacity to change "transparency"
   },
   header: {
     width: '100%',

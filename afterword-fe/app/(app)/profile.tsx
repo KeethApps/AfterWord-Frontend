@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
 
   inner: {
     paddingHorizontal: Spacing.s20,
-    paddingTop: Spacing.s28,
+    paddingTop: Spacing.s32,
 
     maxWidth: 720,
     width: "100%",
@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
 
     borderRadius: 28,
 
-    paddingVertical: Spacing.s28,
+    paddingVertical: Spacing.s20,
     paddingHorizontal: Spacing.s24,
 
     marginBottom: Spacing.s28,
@@ -667,13 +667,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
 
     borderWidth: 4,
-    borderColor: Colors.amber,
+    borderColor: Colors.gold,
   },
 
   avatarText: {
     fontFamily: Fonts.serifBold,
     fontSize: 34,
-    color: Colors.amber,
+    color: Colors.cream,
   },
 
   avatarBadge: {
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
 
     paddingHorizontal: Spacing.s18,
-    paddingVertical: 18,
+    paddingVertical: Spacing.s20,
 
     gap: Spacing.s14,
 
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
     height: 38,
 
     borderRadius: 12,
-
+    marginLeft: Spacing.s10,
     backgroundColor: "#F0F4F0",
 
     alignItems: "center",
@@ -794,7 +794,6 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: Colors.border,
-    marginLeft: 70,
   },
 
   footerNote: {
