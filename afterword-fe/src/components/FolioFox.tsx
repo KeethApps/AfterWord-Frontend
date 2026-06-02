@@ -14,7 +14,7 @@ const foxVariants: Record<string, ImageSourcePropType> = {
   thinking: require("../../assets/fox/fox-reading.png"),
   ghost: require("../../assets/fox/fox-reading.png"),
   secondary: require("../../assets/fox/fox-reading.png"),
-  sad: require("../../assets/fox/fox-reading.png"),
+  sad: require("../../assets/fox/fox-waiting.png"),
 
 };
 

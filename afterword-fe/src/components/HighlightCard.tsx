@@ -25,7 +25,7 @@ interface HighlightCardProps {
   score?: number;
 }
 
-const afterwordLogo = require("../../assets/logo/afterword-watermark.png");
+const afterwordLogo = require("../../assets/fox/fox-icon.png");
 const foxReading = require("../../assets/fox/fox-reading.png");
 
 export function HighlightCard({
@@ -114,59 +114,80 @@ export function HighlightCard({
         </View>
       </Pressable>
 
-      {/* ── Off-screen share card (1080×1350) ── */}
-      <View style={styles.hiddenContainer}>
-        <ViewShot
-          ref={shareCardRef}
-          options={{ format: "png", quality: 1 }}
-          style={styles.shareCard as any}
-          {...{ collapsable: false } as any}
-        >
-          {/* Top accent bar */}
-          <View style={styles.shareTopBar} />
+{/* ── Off-screen share card (1080×1350) ── */}
+<View style={styles.hiddenContainer}>
+  <ViewShot
+    ref={shareCardRef}
+    options={{ format: "png", quality: 1 }}
+    style={styles.shareCard as any}
+    {...{ collapsable: false } as any}
+  >
+    {/* Background decorative blobs */}
+    <View style={styles.shareBlobOne} />
+    <View style={styles.shareBlobTwo} />
 
-          {/* Branding strip */}
-          <View style={styles.shareBrandingRow}>
-            <Image
-              source={afterwordLogo}
-              style={styles.shareLogoTop}
-              resizeMode="contain"
-            />
-          </View>
+    {/* Top branding */}
+    <View style={styles.shareHeader}>
+      <View style={styles.shareBrandRow}>
+        <Image
+          source={afterwordLogo}
+          style={styles.shareLogoTop}
+          resizeMode="contain"
+        />
 
-          {/* Quote zone */}
-          <View style={styles.shareQuoteZone}>
-            {/* Decorative large opening mark */}
-            <Text style={styles.shareDecorativeMark}>"</Text>
-
-            <Text style={styles.shareQuoteText}>{quote}</Text>
-            <Text style={styles.shareClosingMark}>"</Text>
-          </View>
-
-          {/* Book info panel */}
-          <View style={styles.shareInfoPanel}>
-            {/* Fox illustration — overlaps upward out of panel */}
-            <Image
-              source={foxReading}
-              style={styles.shareFox}
-              resizeMode="contain"
-            />
-
-            {/* Text block */}
-            <View style={styles.shareInfoText}>
-              <Text style={styles.shareBookTitle} numberOfLines={2}>
-                {bookTitle}
-              </Text>
-              {author && (
-                <Text style={styles.shareAuthorName}>— {author}</Text>
-              )}
-              {page && (
-                <Text style={styles.sharePageNumber}>p. {page}</Text>
-              )}
-            </View>
-          </View>
-        </ViewShot>
+        <View>
+          <Text style={styles.shareBrandTitle}>AfterWord</Text>
+          <Text style={styles.shareBrandTagline}>
+            For the Words Worth Revisiting.
+          </Text>
+        </View>
       </View>
+    </View>
+
+    {/* Quote area */}
+    <View style={styles.shareQuoteZone}>
+      <Text style={styles.shareOpeningQuote}>“</Text>
+
+      <Text style={styles.shareQuoteText}>{quote}</Text>
+
+      <Text style={styles.shareClosingQuote}>”</Text>
+    </View>
+
+    {/* Footer card */}
+    <View style={styles.shareFooter}>
+      {/* Fox illustration */}
+      <Image
+        source={foxReading}
+        style={styles.shareFox}
+        resizeMode="contain"
+      />
+
+      <View style={styles.shareFooterContent}>
+        <Text style={styles.shareBookTitle} numberOfLines={2}>
+          {bookTitle}
+        </Text>
+
+        {author && (
+          <Text style={styles.shareAuthorName}>
+            by {author}
+          </Text>
+        )}
+
+        {page && (
+          <Text style={styles.sharePageNumber}>
+            Page {page}
+          </Text>
+        )}
+
+        <View style={styles.shareDivider} />
+
+        <Text style={styles.shareFooterCaption}>
+          Captured in AfterWord
+        </Text>
+      </View>
+    </View>
+  </ViewShot>
+</View>
     </>
   );
 }
@@ -235,115 +256,165 @@ const styles = StyleSheet.create({
   },
 
   // ── Share card ───────────────────────────────────────────────
-  hiddenContainer: { position: "absolute", left: -9999, top: -9999 },
-
   shareCard: {
-    width: 1080,
-    height: 1350,
-    backgroundColor: Colors.cream,
-    overflow: "hidden",
-  },
+  width: 1080,
+  height: 1350,
+  backgroundColor: "#F8F4EC",
+  paddingHorizontal: 80,
+  paddingTop: 80,
+  paddingBottom: 70,
+  justifyContent: "space-between",
+  overflow: "hidden",
+  position: "relative",
+},
 
-  // Thin forest-green accent line at very top
-  shareTopBar: {
-    width: "100%",
-    height: 10,
-    backgroundColor: Colors.forest,
-  },
+shareHeader: {
+  zIndex: 2,
+},
 
-  // Logo row just below the bar
-  shareBrandingRow: {
-    paddingHorizontal: 80,
-    paddingTop: 48,
-    paddingBottom: 0,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  shareLogoTop: {
-    width: 220,
-    height: 200,
-    opacity: 0.75,
-  },
+shareBrandRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 18,
+},
 
-  // Large quote area — takes up the middle ~55% of the card
-  shareQuoteZone: {
-    flex: 1,
-    paddingHorizontal: 80,
-    paddingTop: 40,
-    paddingBottom: 20,
-    justifyContent: "center",
-  },
-  shareDecorativeMark: {
-    fontFamily: Fonts.serif,
-    fontSize: 220,
-    lineHeight: 180,
-    color: Colors.forest,
-    opacity: 0.08,
-    marginBottom: -60,
-    marginLeft: -10,
-  },
-  shareQuoteText: {
-    fontFamily: Fonts.serif,
-    fontSize: 62,
-    lineHeight: 88,
-    color: Colors.forest,
-    fontStyle: "italic",
-  },
-  shareClosingMark: {
-    fontFamily: Fonts.serif,
-    fontSize: 120,
-    lineHeight: 80,
-    color: Colors.forest,
-    opacity: 0.08,
-    textAlign: "right",
-    marginTop: 4,
-  },
+shareLogoTop: {
+  width: 150,
+  height: 150,
+},
 
-  // Bottom panel — distinct background, ~30% of card height
-  shareInfoPanel: {
-    height: 100,
-    backgroundColor: Colors.forest,
-    paddingHorizontal: 80,
-    paddingBottom: 72,
-    paddingTop: 10,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-  },
+shareBrandTitle: {
+  fontFamily: "Lora",
+  fontSize: 42,
+  color: Colors.forest,
+},
 
-  // Fox sits in bottom-right, peeking up above the panel edge
-  shareFox: {
-    position: "absolute",
-    right: 60,
-    bottom: 50,
-    width: 340,
-    height: 420,
-  },
+shareBrandTagline: {
+  fontFamily: Fonts.sans,
+  fontSize: 18,
+  color: Colors.slate,
+  marginTop: 2,
+},
 
-  // Text block on the left side of the panel
-  shareInfoText: {
-    flex: 1,
-    paddingRight: 360, // keep text clear of the fox
-    gap: 12,
-  },
-  shareBookTitle: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 42,
-    lineHeight: 52,
-    color: Colors.cream,
-    letterSpacing: 0.3,
-  },
-  shareAuthorName: {
-    fontFamily: Fonts.sans,
-    fontSize: 30,
-    color: Colors.cream,
-    opacity: 0.75,
-  },
-  sharePageNumber: {
-    fontFamily: Fonts.sans,
-    fontSize: 22,
-    color: Colors.cream,
-    opacity: 0.45,
-    marginTop: 4,
-  },
+shareQuoteZone: {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  paddingHorizontal: 40,
+  position: "relative",
+  zIndex: 2,
+},
+
+shareOpeningQuote: {
+  position: "absolute",
+  top: -20,
+  left: 0,
+  fontSize: 180,
+  fontFamily: "Lora-Regular",
+  color: "rgba(44, 62, 45, 0.08)",
+},
+
+shareClosingQuote: {
+  position: "absolute",
+  bottom: -120,
+  right: 10,
+  fontSize: 180,
+  fontFamily: "Lora-Regular",
+  color: "rgba(44, 62, 45, 0.08)",
+},
+
+shareQuoteText: {
+  fontFamily: "Lora",
+  fontSize: 58,
+  lineHeight: 92,
+  textAlign: "left",
+  color: Colors.forest,
+  letterSpacing: 0.3,
+  maxWidth: 820,
+},
+
+shareFooter: {
+  backgroundColor: "rgba(255,255,255,0.72)",
+  borderWidth: 1,
+  borderColor: "rgba(44,62,45,0.08)",
+  borderRadius: 40,
+  padding: 42,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 28,
+  backdropFilter: "blur(20px)" as any,
+  zIndex: 2,
+},
+
+shareFox: {
+  width: 180,
+  height: 180,
+},
+
+shareFooterContent: {
+  flex: 1,
+},
+
+shareBookTitle: {
+  fontFamily: "Lora-Bold",
+  fontSize: 36,
+  lineHeight: 46,
+  color: Colors.forest,
+  marginBottom: 10,
+},
+
+shareAuthorName: {
+  fontFamily: Fonts.sans,
+  fontSize: 22,
+  color: Colors.slate,
+  marginBottom: 8,
+},
+
+sharePageNumber: {
+  fontFamily: Fonts.sansBold,
+  fontSize: 18,
+  color: Colors.forest,
+  opacity: 0.75,
+},
+
+shareDivider: {
+  width: 80,
+  height: 2,
+  backgroundColor: "rgba(44,62,45,0.12)",
+  marginTop: 24,
+  marginBottom: 18,
+  borderRadius: 999,
+},
+
+shareFooterCaption: {
+  fontFamily: Fonts.sans,
+  fontSize: 18,
+  color: Colors.slate,
+},
+
+shareBlobOne: {
+  position: "absolute",
+  width: 420,
+  height: 420,
+  borderRadius: 999,
+  backgroundColor: "rgba(214, 176, 107, 0.14)",
+  top: -120,
+  right: -80,
+},
+
+shareBlobTwo: {
+  position: "absolute",
+  width: 320,
+  height: 320,
+  borderRadius: 999,
+  backgroundColor: "rgba(44, 62, 45, 0.05)",
+  bottom: -80,
+  left: -60,
+},
+
+hiddenContainer: {
+  position: "absolute",
+  left: -9999,
+  top: -9999,
+},
 });
