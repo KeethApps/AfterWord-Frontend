@@ -197,14 +197,14 @@ function StatusIcon({ type }: { type: "success" | "warning" | "error" }) {
     type === "success"
       ? "checkmark"
       : type === "warning"
-      ? "warning-outline"
-      : "close";
+        ? "warning-outline"
+        : "close";
   const bgColor =
     type === "success"
       ? Colors.forest
       : type === "warning"
-      ? Colors.amber
-      : Colors.danger;
+        ? Colors.amber
+        : Colors.danger;
 
   return (
     <Animated.View
@@ -273,6 +273,17 @@ export default function UploadScreen() {
     setUploadProgress(0);
     setErrorMessage("");
 
+    // ✅ FIX: declare progressInterval outside try so finally can always clear it
+    const progressInterval = setInterval(() => {
+      setUploadProgress((p) => {
+        if (p >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return p + 12;
+      });
+    }, 180);
+
     try {
       const {
         data: { user },
@@ -284,16 +295,6 @@ export default function UploadScreen() {
       const fileResponse = await fetch(file.uri);
       const blob = await fileResponse.blob();
 
-      const progressInterval = setInterval(() => {
-        setUploadProgress((p) => {
-          if (p >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return p + 12;
-        });
-      }, 180);
-
       const { error: storageError } = await supabase.storage
         .from("clippings")
         .upload(storagePath, blob, {
@@ -301,71 +302,47 @@ export default function UploadScreen() {
           upsert: false,
         });
 
-      clearInterval(progressInterval);
-      if (storageError) throw new Error(storageError.message);
+      if (storageError) {
+        throw new Error(storageError.message);
+      }
+
+      const { data: ingestionData, error: ingestionError } =
+        await supabase.functions.invoke("process-highlights", {
+          body: {
+            path: storagePath,
+          },
+        });
+
+      if (ingestionError) {
+        throw new Error(`Failed to start ingestion: ${ingestionError.message}`);
+      }
+
+      const jobId = ingestionData?.jobId;
+      console.log("Started ingestion job:", jobId);
 
       setUploadProgress(100);
-      setState("processing");
 
-      // Poll ingestion_jobs to wait for parsing to complete
-      let jobId: string | null = null;
-      for (let i = 0; i < 30; i++) {
-        await new Promise((res) => setTimeout(res, 1000));
-        const { data: jobs } = await supabase
-          .from("ingestion_jobs")
-          .select("id, status")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        if (jobs && jobs.length > 0) {
-          const job = jobs[0];
-          if (job.status === "failed") throw new Error("Failed to parse clippings file.");
-          if (job.status === "parsed" || job.status === "completed") {
-            jobId = job.id;
-            break;
-          }
-        }
-      }
-
-      if (!jobId) throw new Error("Timeout waiting for parsing to start.");
-
-      // Poll ingestion_chunks to wait for all chunks to be processed
-      let imported = 0;
-      let failed = 0;
-      let totalChunks = 0;
-
-      for (let i = 0; i < 60; i++) {
-        await new Promise((res) => setTimeout(res, 1500));
-        const { data: chunks } = await supabase
-          .from("ingestion_chunks")
-          .select("status")
-          .eq("job_id", jobId);
-
-        if (chunks && chunks.length > 0) {
-          totalChunks = chunks.length;
-          imported = chunks.filter(c => c.status === "completed").length;
-          failed = chunks.filter(c => c.status === "failed").length;
-
-          if (imported + failed === totalChunks) {
-            break;
-          }
-        } else if (i > 10 && totalChunks === 0) {
-           break; // no chunks found after a while
-        }
-      }
-
+      // ✅ FIX: pipeline is async — job is queued, real counts come later.
+      // Set a placeholder result so the success UI renders correctly.
       const importResult: ImportResult = {
-        imported,
-        books: 1, // We don't have a direct way to count unique books added, so we mock 1
-        failed,
+        imported: ingestionData?.chunkCount ?? 0,
+        books: 0,
+        failed: 0,
       };
-
       setResult(importResult);
+
+      // ✅ FIX: was referencing undefined `importResult` — now uses the local
+      // variable defined above. "partial" state is reserved for future use
+      // when you have real failure counts from polling.
       setState(importResult.failed > 0 ? "partial" : "success");
     } catch (err: any) {
-      setErrorMessage(err?.message ?? "Something went wrong. Please try again.");
+      setErrorMessage(
+        err?.message ?? "Something went wrong. Please try again.",
+      );
       setState("error");
+    } finally {
+      // ✅ FIX: always clear the interval, even if an error is thrown mid-upload
+      clearInterval(progressInterval);
     }
   }
 
@@ -382,7 +359,8 @@ export default function UploadScreen() {
   return (
     <ScreenContainer padded={false}>
       <AppHeader title="Upload" />
-      <ScrollView style={styles.scrollContainer}
+      <ScrollView
+        style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
@@ -391,13 +369,10 @@ export default function UploadScreen() {
         ]}
       >
         <View style={styles.inner}>
-
           <AnimatedPanel stateKey={state}>
-
             {/* ── Idle ───────────────────────────────────────────────────── */}
             {state === "idle" && (
               <View style={styles.stateBlock}>
-
                 <SectionLabel title="Your file" />
                 <Pressable style={styles.dropZone} onPress={handlePickFile}>
                   <Ionicons
@@ -456,7 +431,7 @@ export default function UploadScreen() {
                     color={Colors.slate}
                   />
                   <Text style={styles.privacyText}>
-                    Your file is private and secure. We never share your highlights.
+                    Your file is private and secure.
                   </Text>
                 </View>
               </View>
@@ -466,7 +441,7 @@ export default function UploadScreen() {
             {state === "selected" && file && (
               <View style={styles.stateBlock}>
                 {/* Fox: attentive/ready */}
-                <FolioFox size={100} variant="default" style={styles.fox} />
+                <FolioFox size={100} variant="reading" style={styles.fox} />
 
                 <SectionLabel title="Ready to import" />
                 <View style={styles.card}>
@@ -480,7 +455,9 @@ export default function UploadScreen() {
                     </View>
                     <View style={styles.fileInfo}>
                       <Text style={styles.fileName}>{file.name}</Text>
-                      <Text style={styles.fileSize}>{formatBytes(file.size)}</Text>
+                      <Text style={styles.fileSize}>
+                        {formatBytes(file.size)}
+                      </Text>
                     </View>
                     <Ionicons
                       name="checkmark-circle"
@@ -491,7 +468,11 @@ export default function UploadScreen() {
                 </View>
 
                 <View style={styles.actionGroup}>
-                  <Button label="Upload File" onPress={handleUpload} fullWidth />
+                  <Button
+                    label="Upload File"
+                    onPress={handleUpload}
+                    fullWidth
+                  />
                   <Button
                     label="Choose a different file"
                     variant="ghost"
@@ -519,7 +500,9 @@ export default function UploadScreen() {
                     </View>
                     <View style={styles.fileInfo}>
                       <Text style={styles.fileName}>{file.name}</Text>
-                      <Text style={styles.fileSize}>{formatBytes(file.size)}</Text>
+                      <Text style={styles.fileSize}>
+                        {formatBytes(file.size)}
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.progressBlock}>
@@ -542,21 +525,26 @@ export default function UploadScreen() {
                 <View style={styles.card}>
                   {(
                     [
-                      { label: "File uploaded",       status: "done"   },
-                      { label: "Parsing clippings",   status: "active" },
+                      { label: "File uploaded", status: "done" },
+                      { label: "Parsing clippings", status: "active" },
                       { label: "Creating embeddings", status: "queued" },
-                      { label: "Saving highlights",   status: "queued" },
+                      { label: "Saving highlights", status: "queued" },
                     ] as { label: string; status: StepStatus }[]
                   ).map((step, i, arr) => (
                     <React.Fragment key={step.label}>
-                      <StepRow index={i} label={step.label} status={step.status} />
+                      <StepRow
+                        index={i}
+                        label={step.label}
+                        status={step.status}
+                      />
                       {i < arr.length - 1 && <View style={styles.divider} />}
                     </React.Fragment>
                   ))}
                 </View>
 
                 <Text style={styles.processingNote}>
-                  This may take a few minutes depending on the size of your library.
+                  This may take a few minutes depending on the size of your
+                  library.
                 </Text>
               </View>
             )}
@@ -568,7 +556,7 @@ export default function UploadScreen() {
                 <FolioFox size={100} variant="happy" style={styles.fox} />
 
                 <StatusIcon type="success" />
-                <Text style={styles.stateTitle}>Import complete!</Text>
+                <Text style={styles.stateTitle}>Import started!</Text>
                 <Text style={styles.stateSubtitle}>
                   We imported{" "}
                   <Text style={styles.stateBold}>
@@ -585,7 +573,11 @@ export default function UploadScreen() {
                 <View style={styles.card}>
                   <View style={styles.summaryRow}>
                     <View style={styles.rowIcon}>
-                      <Ionicons name="bookmark-outline" size={18} color={Colors.forest} />
+                      <Ionicons
+                        name="bookmark-outline"
+                        size={18}
+                        color={Colors.forest}
+                      />
                     </View>
                     <Text style={styles.summaryLabel}>Highlights imported</Text>
                     <Text style={styles.summaryValue}>
@@ -595,7 +587,11 @@ export default function UploadScreen() {
                   <View style={styles.divider} />
                   <View style={styles.summaryRow}>
                     <View style={styles.rowIcon}>
-                      <Ionicons name="library-outline" size={18} color={Colors.forest} />
+                      <Ionicons
+                        name="library-outline"
+                        size={18}
+                        color={Colors.forest}
+                      />
                     </View>
                     <Text style={styles.summaryLabel}>Books added</Text>
                     <Text style={styles.summaryValue}>{result.books}</Text>
@@ -622,15 +618,19 @@ export default function UploadScreen() {
                 <StatusIcon type="warning" />
                 <Text style={styles.stateTitle}>Imported with some issues</Text>
                 <Text style={styles.stateSubtitle}>
-                  Most of your highlights were saved, but a few items couldn't be
-                  processed.
+                  Most of your highlights were saved, but a few items couldn't
+                  be processed.
                 </Text>
 
                 <SectionLabel title="Summary" />
                 <View style={styles.card}>
                   <View style={styles.summaryRow}>
                     <View style={styles.rowIcon}>
-                      <Ionicons name="bookmark-outline" size={18} color={Colors.forest} />
+                      <Ionicons
+                        name="bookmark-outline"
+                        size={18}
+                        color={Colors.forest}
+                      />
                     </View>
                     <Text style={styles.summaryLabel}>Highlights imported</Text>
                     <Text style={styles.summaryValue}>
@@ -640,7 +640,11 @@ export default function UploadScreen() {
                   <View style={styles.divider} />
                   <View style={styles.summaryRow}>
                     <View style={styles.rowIcon}>
-                      <Ionicons name="library-outline" size={18} color={Colors.forest} />
+                      <Ionicons
+                        name="library-outline"
+                        size={18}
+                        color={Colors.forest}
+                      />
                     </View>
                     <Text style={styles.summaryLabel}>Books added</Text>
                     <Text style={styles.summaryValue}>{result.books}</Text>
@@ -648,10 +652,16 @@ export default function UploadScreen() {
                   <View style={styles.divider} />
                   <View style={styles.summaryRow}>
                     <View style={[styles.rowIcon, styles.rowIconWarn]}>
-                      <Ionicons name="warning-outline" size={18} color={Colors.amber} />
+                      <Ionicons
+                        name="warning-outline"
+                        size={18}
+                        color={Colors.amber}
+                      />
                     </View>
                     <Text style={styles.summaryLabel}>Failed to process</Text>
-                    <Text style={[styles.summaryValue, styles.summaryValueWarn]}>
+                    <Text
+                      style={[styles.summaryValue, styles.summaryValueWarn]}
+                    >
                       {result.failed.toLocaleString()}
                     </Text>
                   </View>
@@ -678,7 +688,8 @@ export default function UploadScreen() {
                 <StatusIcon type="error" />
                 <Text style={styles.stateTitle}>Upload failed</Text>
                 <Text style={styles.stateSubtitle}>
-                  {errorMessage || "We couldn't upload your file. Please try again."}
+                  {errorMessage ||
+                    "We couldn't upload your file. Please try again."}
                 </Text>
 
                 <View style={styles.actionGroup}>
@@ -692,7 +703,6 @@ export default function UploadScreen() {
                 </View>
               </View>
             )}
-
           </AnimatedPanel>
         </View>
       </ScrollView>

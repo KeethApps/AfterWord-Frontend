@@ -69,7 +69,7 @@ const ALL_HIGHLIGHTS = [
   },
 ];
 
-const FILTER_TABS = ["All", "By Book"];
+const FILTER_TABS = ["All", "Favourites"];
 
 // ─── Fade-in list item ────────────────────────────────────────────────────────
 
