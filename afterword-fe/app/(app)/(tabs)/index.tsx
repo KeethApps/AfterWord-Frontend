@@ -1,7 +1,7 @@
 import React from "react";
 import { ScrollView, ActivityIndicator, View } from "react-native";
 import { useRouter } from "expo-router";
-
+import { useAuth } from "@/hooks/useAuth";
 import { ScreenContainer } from "../../../src/components/common/ScreenContainer";
 import { 
   GreetingHeader, 
@@ -17,7 +17,7 @@ import { useHighlights } from "../../../hooks/queries/highlights";
 
 export default function HomeScreen() {
   const router = useRouter();
-
+  const { user } = useAuth()
   const { data: books, isLoading: loadingBooks } = useBooks();
   const { data: highlights, isLoading: loadingHighlights } = useHighlights();
 
@@ -31,7 +31,7 @@ export default function HomeScreen() {
     <ScreenContainer padded={false}>
       <AppHeader title="AfterWord" subtitle="For the Words Worth Revisiting." />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
-        <GreetingHeader userName="Keerthana" hour={new Date().getHours()} />
+        <GreetingHeader hasContent="true" userName={user?.user_metadata?.first_name || 'there'} hour={new Date().getHours()} />
         {isLoading ? (
           <View className="flex-1 items-center justify-center py-20">
             <ActivityIndicator size="large" color="#2F4F4F" />

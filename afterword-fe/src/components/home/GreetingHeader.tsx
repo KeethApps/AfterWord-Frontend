@@ -1,33 +1,83 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../constants/theme';
+import { View, Text } from 'react-native';
+import { FolioFox } from '../FolioFox';
+import { Colors, Fonts, Spacing } from '../../../constants/theme';
 
 interface GreetingHeaderProps {
   userName: string;
   hour: number; // 0-23
+  hasContent: boolean; // true if library has books/highlights
+  variant?: 'reading' | 'building' | 'loading' | 'thinking';
 }
 
-export const GreetingHeader: React.FC<GreetingHeaderProps> = ({ userName, hour }) => {
+export const GreetingHeader: React.FC<GreetingHeaderProps> = ({
+  userName,
+  hour,
+  hasContent,
+  variant = 'reading',
+}) => {
   const getGreeting = () => {
     if (hour < 12) return 'Good morning';
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
   };
 
+  const getSubtext = () => {
+    if (!hasContent) return "Let's build your library of ideas.";
+    return "Let's revisit something meaningful.";
+  };
+
+  // Select fox variant based on library state
+  const foxVariant = hasContent ? 'reading' : 'building';
+
   return (
-    <View className="flex-row items-start justify-between mb-8 mt-2">
-      <View className="flex-1">
-        <Text className="font-sans text-sm text-slate mb-1">{getGreeting()},</Text>
-        <Text className="font-serif text-3xl text-forest mb-2">{userName} 🦊</Text>
-        <Text className="font-sans text-sm text-slate">Let's revisit something meaningful.</Text>
+    <View className="mb-6">
+      {/* Greeting + Fox Row */}
+      <View className="flex-row items-center justify-between mb-4">
+        <View className="flex-1">
+          <Text
+            style={{
+              fontSize: 14,
+              fontFamily: Fonts.sans,
+              color: Colors.slate,
+              marginBottom: 2,
+            }}
+          >
+            {getGreeting()},
+          </Text>
+          <View className="flex-row items-center gap-2">
+            <Text
+              style={{
+                fontSize: 32,
+                fontFamily: Fonts.serif,
+                fontWeight: '600',
+                color: Colors.forest,
+              }}
+            >
+              {userName}
+            </Text>
+            {/* Fox emoji as fallback; replace with FolioFox component */}
+            <Text style={{ fontSize: 24 }}>🦊</Text>
+          </View>
+        </View>
+
+        {/* FolioFox Illustration (Right side) */}
+        <View className="ml-4">
+          <FolioFox variant={foxVariant} width={140} height={140} />
+        </View>
       </View>
-      <Pressable 
-        className="h-10 w-10 items-center justify-center rounded-full bg-surface shadow-sm border border-mist"
-        onPress={() => { /* Not implemented yet */ }}
+
+      {/* Subtext Below */}
+      <Text
+        style={{
+          fontSize: 14,
+          fontFamily: Fonts.sans,
+          color: Colors.slate,
+          lineHeight: 20,
+        }}
       >
-        <Ionicons name="notifications-outline" size={20} color={Colors.forest} />
-      </Pressable>
+        {getSubtext()}
+      </Text>
     </View>
   );
 };
