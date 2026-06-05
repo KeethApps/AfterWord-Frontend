@@ -2,14 +2,17 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { Book } from '../../types';
 
-export function useBooks(userId: string) {
+export function useBooks() {
   return useQuery({
-    queryKey: ['books', userId],
+    queryKey: ['books'],
     queryFn: async (): Promise<Book[]> => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
+
       const { data, error } = await supabase
         .from('books')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -30,7 +33,6 @@ export function useBooks(userId: string) {
         updatedAt: b.updated_at,
       }));
     },
-    enabled: !!userId,
   });
 }
 

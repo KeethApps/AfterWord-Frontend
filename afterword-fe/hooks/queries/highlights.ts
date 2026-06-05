@@ -2,17 +2,20 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { Highlight, HighlightWithBook } from '../../types';
 
-export function useHighlights(userId: string, filters?: { bookId?: string, hasNotes?: boolean }) {
+export function useHighlights(filters?: { bookId?: string, hasNotes?: boolean }) {
   return useQuery({
-    queryKey: ['highlights', userId, filters],
+    queryKey: ['highlights', filters],
     queryFn: async (): Promise<HighlightWithBook[]> => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
+
       let query = supabase
         .from('highlights')
         .select(`
           *,
           books (*)
         `)
-        .eq('user_id', userId);
+        .eq('user_id', session.user.id);
 
       if (filters?.bookId) {
         query = query.eq('book_id', filters.bookId);
@@ -52,7 +55,6 @@ export function useHighlights(userId: string, filters?: { bookId?: string, hasNo
         } : null
       }));
     },
-    enabled: !!userId,
   });
 }
 

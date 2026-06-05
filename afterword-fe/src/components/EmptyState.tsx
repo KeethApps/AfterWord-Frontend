@@ -14,6 +14,7 @@ interface EmptyStateProps {
   onCta?: () => void;
   foxVariant?: FoxMood;
   icon?: keyof typeof Ionicons.glyphMap;
+  children?: React.ReactNode;
 }
 
 export function EmptyState({
@@ -24,6 +25,7 @@ export function EmptyState({
   onCta,
   foxVariant,
   icon,
+  children,
 }: EmptyStateProps) {
   const bodyText = description || message;
   return (
@@ -36,6 +38,7 @@ export function EmptyState({
 
       <Text style={styles.title}>{title}</Text>
       {bodyText && <Text style={styles.description}>{bodyText}</Text>}
+      {children}
 
       {ctaLabel && onCta && (
         <Pressable

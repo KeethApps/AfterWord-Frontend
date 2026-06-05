@@ -1,467 +1,233 @@
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
-  StyleSheet,
-  Platform,
+  ScrollView,
   Pressable,
-  FlatList,
-  TextInput,
-  useWindowDimensions,
   ActivityIndicator,
+  FlatList,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Colors, Fonts, Spacing } from "../../../constants/theme";
+import { Ionicons } from "@expo/vector-icons";
 
-import { ScreenContainer } from "../../../src/components/ScreenContainer";
+import { ScreenContainer } from "../../../src/components/common/ScreenContainer";
 import { AppHeader } from "../../../src/components/AppHeader";
-import { BookCover } from "../../../src/components/BookCover";
-import { EmptyState } from "../../../src/components/EmptyState";
-import { supabase } from "../../../lib/supabase";
+import { SearchBar } from "../../../src/components/shared/SearchBar";
+import {
+  LibraryEmptyState,
+  BookListCard,
+  BookGridCard,
+  LibraryFilters,
+  SortOption,
+  ViewMode,
+} from "../../../src/components/library";
+import { useBooks } from "../../../hooks/queries/books";
+import { useHighlights } from "../../../hooks/queries/highlights";
+import { Colors } from "../../../constants/theme";
 
-/**
- * =========================================================
- * TYPES
- * =========================================================
- */
-
-type Book = {
-  id: string;
-  title: string;
-  author: string;
-  highlights: number;
-  coverColor: string;
-};
-
-type SortMode = "title" | "author";
-type ViewMode = "grid" | "list";
-
-/**
- * =========================================================
- * SCREEN
- * =========================================================
- */
+type TabType = "all" | "recent" | "highlighted";
 
 export default function LibraryScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
 
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Queries
+  const { data: books, isLoading: loadingBooks } = useBooks();
+  const { data: highlights, isLoading: loadingHighlights } = useHighlights();
+  
+  // States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<TabType>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [sortMode, setSortMode] = useState<SortOption>("recently_read");
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
-  useEffect(() => {
-    async function fetchLibrary() {
-      setLoading(true);
-      try {
-        // ── Gate on a confirmed session so RLS resolves auth.uid() correctly ──
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+  const isLoading = loadingBooks || loadingHighlights;
+  
+  // Aggregate stats
+  const totalBooks = books?.length || 0;
+  const totalHighlights = highlights?.length || 0;
 
-        if (!session) {
-          console.warn("Library: no active session, skipping fetch");
-          setBooks([]);
-          return;
-        }
+  // Compute highlights per book for efficient rendering
+  const highlightsPerBook = useMemo(() => {
+    const counts: Record<string, number> = {};
+    highlights?.forEach(h => {
+      counts[h.bookId] = (counts[h.bookId] || 0) + 1;
+    });
+    return counts;
+  }, [highlights]);
 
-        const { data, error } = await supabase
-          .from("books")
-          .select("id, title, author, cover_image_url, highlights(count)");
+  // Derived state: Filtered & Sorted books
+  const displayBooks = useMemo(() => {
+    let result = [...(books || [])];
 
-        if (error) {
-          console.error("Library fetch error:", error);
-        } else if (data) {
-          const mapped = data.map((b: any) => ({
-            id: b.id,
-            title: b.title,
-            author: b.author || "Unknown",
-            highlights: b.highlights?.[0]?.count ?? 0,
-            coverColor: b.cover_image_url || "#EBE6D8",
-          }));
-          setBooks(mapped);
-        }
-      } catch (err) {
-        console.error("Library error:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchLibrary();
-  }, []);
-
-  const [query, setQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [sortMode, setSortMode] = useState<SortMode>("title");
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  /**
-   * =========================================================
-   * RESPONSIVE WEB GRID
-   * =========================================================
-   */
-
-  const webColumns =
-    width > 1600
-      ? 7
-      : width > 1300
-      ? 6
-      : width > 1000
-      ? 5
-      : width > 700
-      ? 4
-      : 3;
-
-  const webItemWidth = `${100 / webColumns}%`;
-
-  /**
-   * =========================================================
-   * FILTER + SORT
-   * =========================================================
-   */
-
-  const filteredBooks = useMemo(() => {
-    const filtered = books.filter((book) => {
-      const search = query.toLowerCase();
-      return (
-        book.title.toLowerCase().includes(search) ||
-        book.author.toLowerCase().includes(search)
+    // 1. Search Filter
+    if (searchQuery) {
+      const lowerQ = searchQuery.toLowerCase();
+      result = result.filter(
+        (b) =>
+          b.title.toLowerCase().includes(lowerQ) ||
+          b.author.toLowerCase().includes(lowerQ)
       );
-    });
+    }
 
-    filtered.sort((a, b) => {
-      if (sortMode === "title") return a.title.localeCompare(b.title);
-      return a.author.localeCompare(b.author);
-    });
+    // 2. Tab Filter / Sort
+    if (activeTab === "recent") {
+      // Assuming created_at is recent upload order
+      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (activeTab === "highlighted") {
+      result.sort((a, b) => (highlightsPerBook[b.id] || 0) - (highlightsPerBook[a.id] || 0));
+    }
 
-    return filtered;
-  }, [books, query, sortMode]);
+    // 3. Explicit Sort from Filters Panel (if All Books tab is active, or if Sort overrides tab logic)
+    // To match typical UX, active Tab sets the primary sort, but if a user explicitly changes SortMode, we apply it.
+    // For simplicity, we just apply SortMode on top.
+    if (sortMode === "title_asc") {
+      result.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortMode === "title_desc") {
+      result.sort((a, b) => b.title.localeCompare(a.title));
+    } else if (sortMode === "most_highlights") {
+      result.sort((a, b) => (highlightsPerBook[b.id] || 0) - (highlightsPerBook[a.id] || 0));
+    } else if (sortMode === "recently_read") {
+      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
 
-  /**
-   * =========================================================
-   * NAVIGATION
-   * =========================================================
-   */
+    return result;
+  }, [books, searchQuery, activeTab, sortMode, highlightsPerBook]);
 
-  const handleOpenBook = useCallback(
-    (bookId: string) => {
-      router.push(`/book/${bookId}`);
-    },
-    [router]
-  );
+  // Handle various Empty States
+  const renderEmptyState = () => {
+    if (isLoading) {
+      return <ActivityIndicator size="large" color={Colors.forest} style={{ marginTop: 40 }} />;
+    }
+    
+    // E1: Completely empty library (no books at all)
+    if (!books || books.length === 0) {
+      return <LibraryEmptyState type="empty" />;
+    }
+    
+    // E2: Search yielded no results
+    if (searchQuery && displayBooks.length === 0) {
+      return <LibraryEmptyState type="no-search" onClearSearch={() => setSearchQuery("")} />;
+    }
+    
+    // E3: Filter yielded no results (if we had complex filters)
+    if (displayBooks.length === 0) {
+      return <LibraryEmptyState type="no-filter" onClearFilters={() => setActiveTab("all")} />;
+    }
 
-  /**
-   * =========================================================
-   * RENDERERS
-   * =========================================================
-   */
+    return null;
+  };
 
-  const renderGridItem = ({ item }: { item: Book }) => (
-    <View style={styles.gridItem}>
-      <BookCover
-        id={item.id}
-        title={item.title}
-        author={item.author}
-        highlightCount={item.highlights}
-        coverColor={item.coverColor}
-        fullWidth
-      />
-    </View>
-  );
-
-  const renderListItem = ({ item }: { item: Book }) => (
-    <Pressable
-      onPress={() => handleOpenBook(item.id)}
-      style={({ pressed }) => [styles.listCard, pressed && styles.pressed]}
-    >
-      <View style={styles.listMeta}>
-        <Text style={styles.listTitle}>{item.title}</Text>
-        <Text style={styles.listAuthor}>{item.author}</Text>
-        <Text style={styles.highlightText}>{item.highlights} highlights</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={Colors.slate} />
-    </Pressable>
-  );
-
-  /**
-   * =========================================================
-   * UI
-   * =========================================================
-   */
+  const renderTab = (label: string, value: TabType) => {
+    const isActive = activeTab === value;
+    return (
+      <Pressable
+        onPress={() => setActiveTab(value)}
+        className={`px-4 py-2 rounded-full mr-2 ${
+          isActive ? "bg-forest" : "bg-mist"
+        }`}
+      >
+        <Text className={`font-sans text-sm ${isActive ? "text-white" : "text-forest"}`}>
+          {label}
+        </Text>
+      </Pressable>
+    );
+  };
 
   return (
     <ScreenContainer padded={false}>
       <AppHeader title="Library" />
+      
+      <View className="px-4 flex-1">
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search your library..."
+          onFilterPress={() => setIsFiltersOpen(!isFiltersOpen)}
+          className="mb-4"
+        />
 
-      <View style={{ padding: Spacing.s20, flex: 1 }}>
-        <View style={styles.toolbar}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={18} color={Colors.slate} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search books..."
-              placeholderTextColor={Colors.slate}
-              style={styles.searchInput}
-            />
-          </View>
-        </View>
-
-        {/* Filter Row */}
-        <View style={styles.filterRow}>
-          <View style={{ position: "relative" }}>
-            <Pressable
-              style={styles.dropdown}
-              onPress={() => setShowDropdown(!showDropdown)}
-            >
-              <Text style={styles.dropdownText}>
-                Sort by {sortMode === "title" ? "Title" : "Author"}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color={Colors.forest} />
-            </Pressable>
-
-            {showDropdown && (
-              <View style={styles.dropdownMenu}>
-                <Pressable
-                  style={styles.dropdownItem}
-                  onPress={() => { setSortMode("title"); setShowDropdown(false); }}
-                >
-                  <Text style={styles.dropdownItemText}>Title</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.dropdownItem}
-                  onPress={() => { setSortMode("author"); setShowDropdown(false); }}
-                >
-                  <Text style={styles.dropdownItemText}>Author</Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.viewToggles}>
-            <Pressable onPress={() => setViewMode("grid")}>
-              <Ionicons
-                name="grid"
-                size={20}
-                color={viewMode === "grid" ? Colors.forest : Colors.slate}
-              />
-            </Pressable>
-            <Pressable onPress={() => setViewMode("list")} style={{ marginLeft: 16 }}>
-              <Ionicons
-                name="list"
-                size={20}
-                color={viewMode === "list" ? Colors.forest : Colors.slate}
-              />
-            </Pressable>
-          </View>
-        </View>
-
-        {/* ── Loading ── */}
-        {loading ? (
-          <ActivityIndicator
-            size="large"
-            color={Colors.forest}
-            style={{ marginTop: 60 }}
+        {isFiltersOpen ? (
+          <LibraryFilters
+            sortMode={sortMode}
+            onSortModeChange={setSortMode}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            onClearAll={() => {
+              setSortMode("recently_read");
+              setActiveTab("all");
+            }}
           />
-        ) : filteredBooks.length === 0 ? (
-          /* ── Empty state: no books at all, or no search match ── */
-          <View style={styles.emptyWrapper}>
-            <EmptyState
-              icon="book-outline"
-              title={query ? "No books match your search" : "Your library is empty"}
-              message={
-                query
-                  ? "Try a different title or author name."
-                  : "Upload your Kindle clippings to get started."
-              }
-            />
-          </View>
-        ) : viewMode === "grid" && Platform.OS === "web" ? (
-          /* ── Web grid ── */
-          <View style={styles.webGrid}>
-            {filteredBooks.map((item) => (
-              <View
-                key={item.id}
-                style={[styles.webGridItem, { width: webItemWidth as any }]}
-              >
-                <BookCover
-                  id={item.id}
-                  title={item.title}
-                  author={item.author}
-                  highlightCount={item.highlights}
-                  coverColor={item.coverColor}
-                  fullWidth
-                />
-              </View>
-            ))}
-          </View>
         ) : (
-          /* ── Mobile grid / list ── */
-          <FlatList
-            data={filteredBooks}
-            scrollEnabled={false}
-            nestedScrollEnabled
-            key={viewMode}
-            keyExtractor={(item) => item.id}
-            renderItem={viewMode === "grid" ? renderGridItem : renderListItem}
-            numColumns={viewMode === "grid" ? 2 : 1}
-            columnWrapperStyle={viewMode === "grid" ? styles.gridRow : undefined}
-            contentContainerStyle={{ paddingBottom: 120 }}
-          />
+          <>
+            {/* Tabs Row */}
+            <View className="mb-4">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {renderTab("All Books", "all")}
+                {renderTab("Recently Read", "recent")}
+                {renderTab("Most Highlighted", "highlighted")}
+              </ScrollView>
+            </View>
+
+            {/* Stats Row */}
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="font-sans text-sm text-slate">
+                {displayBooks.length} books • {totalHighlights} highlights
+              </Text>
+              <Pressable 
+                onPress={() => setViewMode(viewMode === "list" ? "grid" : "list")}
+                className="w-8 h-8 rounded-md border border-mist items-center justify-center bg-white"
+              >
+                <Ionicons name={viewMode === "list" ? "grid" : "list"} size={16} color={Colors.forest} />
+              </Pressable>
+            </View>
+
+            {/* Content or Empty State */}
+            {displayBooks.length === 0 || isLoading ? (
+              <View className="flex-1 justify-center items-center">
+                {renderEmptyState()}
+              </View>
+            ) : (
+              <FlatList
+                data={displayBooks}
+                key={viewMode} // Force re-render on layout change
+                keyExtractor={(item) => item.id}
+                numColumns={viewMode === "grid" ? 3 : 1}
+                columnWrapperStyle={viewMode === "grid" ? { justifyContent: "space-between", gap: 16 } : undefined}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 40 }}
+                renderItem={({ item }) => {
+                  const hc = highlightsPerBook[item.id] || 0;
+                  if (viewMode === "list") {
+                    return (
+                      <BookListCard
+                        id={item.id}
+                        title={item.title}
+                        author={item.author}
+                        isbn={item.isbn}
+                        coverImageUrl={item.coverImageUrl}
+                        highlightsCount={hc}
+                        onPress={() => router.push(`/book/${item.id}`)}
+                      />
+                    );
+                  } else {
+                    return (
+                      <BookGridCard
+                        id={item.id}
+                        title={item.title}
+                        author={item.author}
+                        isbn={item.isbn}
+                        coverImageUrl={item.coverImageUrl}
+                        onPress={() => router.push(`/book/${item.id}`)}
+                      />
+                    );
+                  }
+                }}
+              />
+            )}
+          </>
         )}
       </View>
     </ScreenContainer>
   );
 }
-
-/**
- * =========================================================
- * STYLES
- * =========================================================
- */
-
-const styles = StyleSheet.create({
-  toolbar: {
-    flexDirection: "row",
-    gap: Spacing.s16,
-    marginBottom: Spacing.s24,
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 45,
-    paddingHorizontal: Spacing.s16,
-    paddingVertical: Spacing.s16,
-    gap: Spacing.s12,
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    color: Colors.forest,
-  },
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.forest,
-    paddingHorizontal: Spacing.s16,
-    borderRadius: 12,
-    gap: Spacing.s8,
-  },
-  addButtonText: {
-    fontFamily: Fonts.sansBold,
-    color: Colors.white,
-    fontSize: 14,
-  },
-  filterRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: Spacing.s24,
-    zIndex: 100,
-  },
-  dropdown: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  dropdownText: {
-    fontFamily: Fonts.sans,
-    color: Colors.forest,
-    fontSize: 14,
-  },
-  dropdownMenu: {
-    position: "absolute",
-    top: 52,
-    left: 0,
-    width: 160,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: "hidden",
-    zIndex: 999,
-  },
-  dropdownItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  dropdownItemText: {
-    fontFamily: Fonts.sans,
-    color: Colors.forest,
-    fontSize: 14,
-  },
-  viewToggles: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  emptyWrapper: {
-    marginTop: 60,
-  },
-  // Mobile grid
-  gridRow: {
-    justifyContent: "space-between",
-  },
-  gridItem: {
-    width: "48%",
-    marginBottom: Spacing.s16,
-  },
-  // Web grid
-  webGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginHorizontal: -10,
-  },
-  webGridItem: {
-    paddingHorizontal: 10,
-    marginBottom: 28,
-  },
-  // List view
-  listCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: Spacing.s16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  pressed: {
-    opacity: 0.75,
-  },
-  listCover: {
-    width: 72,
-    marginRight: 16,
-  },
-  listMeta: {
-    flex: 1,
-  },
-  listTitle: {
-    fontFamily: Fonts.serif,
-    fontSize: 18,
-    color: Colors.forest,
-    marginBottom: 4,
-  },
-  listAuthor: {
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    color: Colors.slate,
-    marginBottom: 8,
-  },
-  highlightText: {
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-    color: Colors.forest,
-  },
-});

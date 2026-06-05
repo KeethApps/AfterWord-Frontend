@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 
 export interface BookCoverProps {
   coverImageUrl?: string | null;
+  isbn?: string | null;
   title: string;
   author: string;
   className?: string;
@@ -11,13 +12,16 @@ export interface BookCoverProps {
 
 /**
  * Renders a book's cover image with standard dimensions (120x180).
- * Falls back to a solid colored placeholder rendering the title and author if no image is provided.
+ * Falls back to an OpenLibrary cover if isbn is provided but coverImageUrl is missing.
+ * Falls back to a solid colored placeholder if neither is available.
  */
-export const BookCover = ({ coverImageUrl, title, author, className = '' }: BookCoverProps) => {
-  if (coverImageUrl) {
+export const BookCover = ({ coverImageUrl, isbn, title, author, className = '' }: BookCoverProps) => {
+  const imageUrl = coverImageUrl || (isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg` : null);
+
+  if (imageUrl) {
     return (
       <Image
-        source={{ uri: coverImageUrl }}
+        source={{ uri: imageUrl }}
         className={`w-[120px] h-[180px] rounded-md border border-border ${className}`}
         contentFit="cover"
       />
