@@ -747,7 +747,7 @@ export default function UploadScreen() {
                 <View style={styles.actionGroup}>
                   <Button
                     label="View Library"
-                    onPress={() => router.push("/(tabs)/library")}
+                    onPress={() => router.push("/library")}
                     fullWidth
                   />
                   <Button
@@ -806,7 +806,7 @@ export default function UploadScreen() {
                 <View style={styles.actionGroup}>
                   <Button
                     label="View library"
-                    onPress={() => router.push("/(tabs)/library")}
+                    onPress={() => router.push("/library")}
                     fullWidth
                   />
                   <Button

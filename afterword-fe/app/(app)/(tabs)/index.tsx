@@ -90,9 +90,7 @@ export default function HomeScreen() {
           <SectionHeader title="Recent Highlights" onViewAll={() => {router.push("/highlights")}} />
           <View style={styles.highlightList}>
             {PLACEHOLDER_HIGHLIGHTS.map((h, i) => (
-              <View key={i} style={styles.highlightWrapper}>
-                <HighlightCard quote={h.quote} bookTitle={h.bookTitle} page={h.page} />
-              </View>
+              <HighlightCard key={i} quote={h.quote} bookTitle={h.bookTitle} page={h.page} />
             ))}
           </View>
         </View>

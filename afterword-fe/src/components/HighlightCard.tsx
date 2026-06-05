@@ -17,6 +17,7 @@ interface HighlightCardProps {
   bookTitle: string;
   author?: string;
   page?: number;
+  note?: string;
   onPress?: () => void;
   isFavorite?: boolean;
   onFavorite?: () => void;
