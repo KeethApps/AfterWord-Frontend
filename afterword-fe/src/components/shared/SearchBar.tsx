@@ -25,7 +25,7 @@ export const SearchBar = ({
   ...rest
 }: SearchBarProps) => {
   return (
-    <View className={`flex-row items-center gap-x-2 ${className}`}>
+    <View className={`flex-row items-center gap-x-2 mt-5 ${className}`}>
       <View className="flex-1 flex-row items-center bg-white rounded-full px-4 py-3 border border-border">
         <Ionicons name="search" size={20} color={Colors.slate} />
         

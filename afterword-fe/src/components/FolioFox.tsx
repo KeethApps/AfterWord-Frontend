@@ -24,7 +24,13 @@ export type FolioFoxVariant =
 | "idea"
 | "heart"
 | "notebook"
-| "plant";
+| "plant"
+| "drop"
+| "coffee"
+| "desk"
+| "jumping"
+| "confused"
+| "rain";
 
 const foxVariants: Record<FolioFoxVariant, ImageSourcePropType> = {
 reading: require("../../assets/fox/fox-reading.png"),
@@ -42,6 +48,12 @@ idea: require("../../assets/fox/fox-reading.png"), // fallback placeholder
 heart: require("../../assets/fox/fox-reading.png"), // fallback placeholder
 notebook: require("../../assets/fox/fox-reading.png"), // fallback placeholder
 plant: require("../../assets/fox/fox-reading.png"), // fallback placeholder
+drop: require("../../assets/fox/fox-reading.png"), // fallback placeholder
+coffee: require("../../assets/fox/fox-reading.png"), // fallback placeholder
+desk: require("../../assets/fox/fox-reading.png"), // fallback placeholder
+jumping: require("../../assets/fox/fox-reading.png"), // fallback placeholder
+confused: require("../../assets/fox/fox-reading.png"), // fallback placeholder
+rain: require("../../assets/fox/fox-reading.png"), // fallback placeholder
 };
 
 // ─── Props ───────────────────────────────────────────────────────────────────

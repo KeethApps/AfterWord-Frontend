@@ -18,7 +18,11 @@ import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
-import { RealtimeChannel } from "@supabase/supabase-js";
+import { UploadInitialState } from "@/src/components/upload/UploadInitialState";
+import { UploadSelectedState } from "@/src/components/upload/UploadSelectedState";
+import { UploadProgressState } from "@/src/components/upload/UploadProgressState";
+import { ImportCompleteCard } from "../../../src/components";
+import { UploadFailedState } from "../../../src/components";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -541,18 +545,7 @@ export default function UploadScreen() {
             {/* ── Idle ───────────────────────────────────────────────────── */}
             {state === "idle" && (
               <View style={styles.stateBlock}>
-                <SectionLabel title="Your file" />
-                <Pressable style={styles.dropZone} onPress={handlePickFile}>
-                  <Ionicons
-                    name="cloud-upload-outline"
-                    size={32}
-                    color={Colors.slate}
-                    style={{ opacity: 0.6 }}
-                  />
-                  <Text style={styles.dropText}>Tap to choose your file</Text>
-                  <Text style={styles.dropHint}>My Clippings.txt only</Text>
-                </Pressable>
-
+                <UploadInitialState onPickFile={handlePickFile} />
                 <SectionLabel title="How it works" />
                 <View style={styles.card}>
                   {[
