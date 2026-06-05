@@ -10,12 +10,15 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
+import { router } from "expo-router";
 import { Button, FolioFox } from "../../../src/components";
 import { AppHeader } from "../../../src/components/AppHeader";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,6 +30,15 @@ type UploadState =
   | "success"
   | "partial"
   | "error";
+
+// Maps directly to job_status_type enum in your DB
+type JobStatus =
+  | "pending"
+  | "parsing"
+  | "parsed"
+  | "vectorizing"
+  | "completed"
+  | "failed";
 
 interface SelectedFile {
   name: string;
@@ -47,6 +59,25 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Map DB job status → which step index is active in the UI
+function jobStatusToStep(status: JobStatus): number {
+  switch (status) {
+    case "pending":
+      return 0;
+    case "parsing":
+      return 1;
+    case "parsed":
+    case "vectorizing":
+      return 2;
+    case "completed":
+      return 3;
+    case "failed":
+      return -1;
+    default:
+      return 0;
+  }
 }
 
 // ─── Animated panel — fade + slide on state change ───────────────────────────
@@ -218,7 +249,7 @@ function StatusIcon({ type }: { type: "success" | "warning" | "error" }) {
   );
 }
 
-// ─── Section label — matches settings/search ─────────────────────────────────
+// ─── Section label ────────────────────────────────────────────────────────────
 
 function SectionLabel({ title }: { title: string }) {
   return <Text style={styles.sectionLabel}>{title}</Text>;
@@ -231,8 +262,76 @@ export default function UploadScreen() {
   const [state, setState] = useState<UploadState>("idle");
   const [file, setFile] = useState<SelectedFile | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingStep, setProcessingStep] = useState(0);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Hold a ref to the Realtime channel so we can unsubscribe on cleanup
+  const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
+
+  // Clean up Realtime subscription when the screen unmounts
+  useEffect(() => {
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+      }
+    };
+  }, []);
+
+  // ── Subscribe to job progress via Realtime ─────────────────────────────────
+  function subscribeToJob(jobId: string) {
+    const channel = supabase
+      .channel(`job:${jobId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "ingestion_jobs",
+          filter: `id=eq.${jobId}`,
+        },
+        (payload) => {
+          const job = payload.new as {
+            status: JobStatus;
+            chunk_count: number | null;
+            processed_count: number | null;
+            error_message: string | null;
+          };
+
+          const step = jobStatusToStep(job.status);
+          if (step >= 0) setProcessingStep(step);
+
+          if (job.chunk_count && job.processed_count != null) {
+            const pct = Math.round(
+              (job.processed_count / job.chunk_count) * 100,
+            );
+            setUploadProgress(Math.min(pct, 99));
+          }
+
+          if (job.status === "completed") {
+            setUploadProgress(100);
+            setResult({
+              imported: job.chunk_count ?? 0,
+              books: 0,
+              failed: 0,
+            });
+            setState("success");
+            supabase.removeChannel(channel);
+          }
+
+          if (job.status === "failed") {
+            setErrorMessage(
+              job.error_message ?? "Processing failed. Please try again.",
+            );
+            setState("error");
+            supabase.removeChannel(channel);
+          }
+        },
+      )
+      .subscribe();
+
+    realtimeChannelRef.current = channel;
+  }
 
   // ── File picker ────────────────────────────────────────────────────────────
   async function handlePickFile() {
@@ -265,7 +364,7 @@ export default function UploadScreen() {
     }
   }
 
-  // ── Upload + process ───────────────────────────────────────────────────────
+// ── Upload + process ───────────────────────────────────────────────────────
   async function handleUpload() {
     if (!file) return;
 
@@ -273,87 +372,156 @@ export default function UploadScreen() {
     setUploadProgress(0);
     setErrorMessage("");
 
-    // ✅ FIX: declare progressInterval outside try so finally can always clear it
     const progressInterval = setInterval(() => {
       setUploadProgress((p) => {
-        if (p >= 90) {
+        if (p >= 85) {
           clearInterval(progressInterval);
-          return 90;
+          return 85;
         }
-        return p + 12;
+        return p + 10;
       });
-    }, 180);
+    }, 200);
 
     try {
+      // ── 1. Confirm the user is authenticated ──────────────────────────────
       const {
         data: { user },
         error: authError,
       } = await supabase.auth.getUser();
       if (authError || !user) throw new Error("Not authenticated");
 
-      const storagePath = `${user.id}/${Date.now()}_${file.name}`;
-      const fileResponse = await fetch(file.uri);
-      const blob = await fileResponse.blob();
+      // ── 2. Build a sanitized storage path ─────────────────────────────────
+      const uuid = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const storagePath = `clippings/${user.id}/${uuid}.txt`;
 
-      const { error: storageError } = await supabase.storage
+      // ── 3. Read file as base64 then convert to blob ────────────────────────
+      const response = await fetch(file.uri);
+      const arrayBuffer = await response.arrayBuffer();
+
+      // ── 4. Upload to Supabase Storage ─────────────────────────────────────
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from("clippings")
-        .upload(storagePath, blob, {
+        .upload(storagePath, arrayBuffer, {
           contentType: "text/plain",
-          upsert: false,
         });
 
-      if (storageError) {
-        throw new Error(storageError.message);
+      console.log("UPLOAD DATA", uploadData);
+      console.log("UPLOAD ERROR", uploadError);
+
+      if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
       }
 
-      const { data: ingestionData, error: ingestionError } =
-        await supabase.functions.invoke("process-highlights", {
-          body: {
-            path: storagePath,
+      // ── 5. Invoke process-highlights edge function via explicit fetch ──────
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const funcResponse = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/process-highlights`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+            "Content-Type": "application/json",
           },
-        });
+          body: JSON.stringify({
+            file_path: storagePath,
+            source_type: "KINDLE",
+          }),
+        }
+      );
 
-      if (ingestionError) {
-        throw new Error(`Failed to start ingestion: ${ingestionError.message}`);
+      const text = await funcResponse.text();
+
+      console.log("STATUS", funcResponse.status);
+      console.log("BODY", text);
+
+      if (!funcResponse.ok) {
+        throw new Error(`Function failed: ${funcResponse.status} ${text}`);
       }
 
-      const jobId = ingestionData?.jobId;
-      console.log("Started ingestion job:", jobId);
+      const ingestionData = JSON.parse(text);
+      const jobId = ingestionData.job_id;
 
-      setUploadProgress(100);
+      if (!jobId) {
+        throw new Error("No job_id returned from process-highlights");
+      }
 
-      // ✅ FIX: pipeline is async — job is queued, real counts come later.
-      // Set a placeholder result so the success UI renders correctly.
-      const importResult: ImportResult = {
-        imported: ingestionData?.chunkCount ?? 0,
-        books: 0,
-        failed: 0,
-      };
-      setResult(importResult);
+      clearInterval(progressInterval);
+      setUploadProgress(90);
 
-      // ✅ FIX: was referencing undefined `importResult` — now uses the local
-      // variable defined above. "partial" state is reserved for future use
-      // when you have real failure counts from polling.
-      setState(importResult.failed > 0 ? "partial" : "success");
+      // ── 6. Switch to processing state + start Realtime subscription ────────
+      setState("processing");
+      setProcessingStep(0);
+      
+      // CRITICAL FIX: Attach the realtime listener so the UI progresses!
+      subscribeToJob(jobId); 
+      
+      console.log("JOB CREATED & SUBSCRIBED", jobId);
     } catch (err: any) {
       setErrorMessage(
         err?.message ?? "Something went wrong. Please try again.",
       );
       setState("error");
     } finally {
-      // ✅ FIX: always clear the interval, even if an error is thrown mid-upload
       clearInterval(progressInterval);
     }
   }
 
   // ── Reset ──────────────────────────────────────────────────────────────────
   function handleReset() {
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
     setFile(null);
     setUploadProgress(0);
+    setProcessingStep(0);
     setResult(null);
     setErrorMessage("");
     setState("idle");
   }
+
+  // ── Derive step statuses from processingStep ───────────────────────────────
+  const steps: { label: string; status: StepStatus }[] = [
+    {
+      label: "File uploaded",
+      status:
+        processingStep > 0
+          ? "done"
+          : processingStep === 0
+            ? "active"
+            : "queued",
+    },
+    {
+      label: "Parsing clippings",
+      status:
+        processingStep > 1
+          ? "done"
+          : processingStep === 1
+            ? "active"
+            : "queued",
+    },
+    {
+      label: "Creating embeddings",
+      status:
+        processingStep > 2
+          ? "done"
+          : processingStep === 2
+            ? "active"
+            : "queued",
+    },
+    {
+      label: "Saving highlights",
+      status:
+        processingStep > 3
+          ? "done"
+          : processingStep === 3
+            ? "active"
+            : "queued",
+    },
+  ];
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -384,8 +552,7 @@ export default function UploadScreen() {
                   <Text style={styles.dropText}>Tap to choose your file</Text>
                   <Text style={styles.dropHint}>My Clippings.txt only</Text>
                 </Pressable>
-                {/* Fox: neutral/reading pose while waiting
-                <FolioFox size={180} variant="default" style={styles.fox} /> */}
+
                 <SectionLabel title="How it works" />
                 <View style={styles.card}>
                   {[
@@ -431,7 +598,8 @@ export default function UploadScreen() {
                     color={Colors.slate}
                   />
                   <Text style={styles.privacyText}>
-                    Your file is private and secure.
+                    Your file is private and secure. We never share your
+                    highlights.
                   </Text>
                 </View>
               </View>
@@ -440,9 +608,7 @@ export default function UploadScreen() {
             {/* ── Selected ───────────────────────────────────────────────── */}
             {state === "selected" && file && (
               <View style={styles.stateBlock}>
-                {/* Fox: attentive/ready */}
                 <FolioFox size={100} variant="reading" style={styles.fox} />
-
                 <SectionLabel title="Ready to import" />
                 <View style={styles.card}>
                   <View style={styles.fileRow}>
@@ -485,10 +651,8 @@ export default function UploadScreen() {
             {/* ── Uploading ──────────────────────────────────────────────── */}
             {state === "uploading" && file && (
               <View style={styles.stateBlock}>
-                {/* Fox: working at laptop */}
                 <FolioFox size={100} variant="laptop" style={styles.fox} />
-
-                <SectionLabel title="Uploading" />
+                <SectionLabel title="Uploading your file..." />
                 <View style={styles.card}>
                   <View style={styles.fileRow}>
                     <View style={styles.fileIconWrap}>
@@ -518,19 +682,10 @@ export default function UploadScreen() {
             {/* ── Processing ─────────────────────────────────────────────── */}
             {state === "processing" && (
               <View style={styles.stateBlock}>
-                {/* Fox: thinking/processing */}
                 <FolioFox size={100} variant="thinking" style={styles.fox} />
-
-                <SectionLabel title="Processing your file" />
+                <SectionLabel title="Processing your highlights" />
                 <View style={styles.card}>
-                  {(
-                    [
-                      { label: "File uploaded", status: "done" },
-                      { label: "Parsing clippings", status: "active" },
-                      { label: "Creating embeddings", status: "queued" },
-                      { label: "Saving highlights", status: "queued" },
-                    ] as { label: string; status: StepStatus }[]
-                  ).map((step, i, arr) => (
+                  {steps.map((step, i, arr) => (
                     <React.Fragment key={step.label}>
                       <StepRow
                         index={i}
@@ -542,9 +697,18 @@ export default function UploadScreen() {
                   ))}
                 </View>
 
+                {uploadProgress > 0 && (
+                  <View style={styles.processingProgress}>
+                    <ProgressBar progress={uploadProgress} />
+                    <Text style={styles.progressLabel}>
+                      {uploadProgress}% processed
+                    </Text>
+                  </View>
+                )}
+
                 <Text style={styles.processingNote}>
-                  This may take a few minutes depending on the size of your
-                  library.
+                  You can leave this screen — we'll keep processing in the
+                  background.
                 </Text>
               </View>
             )}
@@ -552,21 +716,15 @@ export default function UploadScreen() {
             {/* ── Success ────────────────────────────────────────────────── */}
             {state === "success" && result && (
               <View style={styles.stateBlock}>
-                {/* Fox: happy/celebrating */}
                 <FolioFox size={100} variant="happy" style={styles.fox} />
-
                 <StatusIcon type="success" />
-                <Text style={styles.stateTitle}>Import started!</Text>
+                <Text style={styles.stateTitle}>Import complete!</Text>
                 <Text style={styles.stateSubtitle}>
-                  We imported{" "}
                   <Text style={styles.stateBold}>
                     {result.imported.toLocaleString()} highlights
                   </Text>{" "}
-                  from{" "}
-                  <Text style={styles.stateBold}>
-                    {result.books} {result.books === 1 ? "book" : "books"}
-                  </Text>
-                  .
+                  have been queued for processing. They'll appear in your
+                  library shortly.
                 </Text>
 
                 <SectionLabel title="Summary" />
@@ -579,27 +737,19 @@ export default function UploadScreen() {
                         color={Colors.forest}
                       />
                     </View>
-                    <Text style={styles.summaryLabel}>Highlights imported</Text>
+                    <Text style={styles.summaryLabel}>Highlights queued</Text>
                     <Text style={styles.summaryValue}>
                       {result.imported.toLocaleString()}
                     </Text>
                   </View>
-                  <View style={styles.divider} />
-                  <View style={styles.summaryRow}>
-                    <View style={styles.rowIcon}>
-                      <Ionicons
-                        name="library-outline"
-                        size={18}
-                        color={Colors.forest}
-                      />
-                    </View>
-                    <Text style={styles.summaryLabel}>Books added</Text>
-                    <Text style={styles.summaryValue}>{result.books}</Text>
-                  </View>
                 </View>
 
                 <View style={styles.actionGroup}>
-                  <Button label="View Library" onPress={() => {}} fullWidth />
+                  <Button
+                    label="View Library"
+                    onPress={() => router.push("/(tabs)/library")}
+                    fullWidth
+                  />
                   <Button
                     label="Import another file"
                     variant="ghost"
@@ -612,9 +762,7 @@ export default function UploadScreen() {
             {/* ── Partial ────────────────────────────────────────────────── */}
             {state === "partial" && result && (
               <View style={styles.stateBlock}>
-                {/* Fox: uncertain/thinking */}
                 <FolioFox size={100} variant="thinking" style={styles.fox} />
-
                 <StatusIcon type="warning" />
                 <Text style={styles.stateTitle}>Imported with some issues</Text>
                 <Text style={styles.stateSubtitle}>
@@ -639,18 +787,6 @@ export default function UploadScreen() {
                   </View>
                   <View style={styles.divider} />
                   <View style={styles.summaryRow}>
-                    <View style={styles.rowIcon}>
-                      <Ionicons
-                        name="library-outline"
-                        size={18}
-                        color={Colors.forest}
-                      />
-                    </View>
-                    <Text style={styles.summaryLabel}>Books added</Text>
-                    <Text style={styles.summaryValue}>{result.books}</Text>
-                  </View>
-                  <View style={styles.divider} />
-                  <View style={styles.summaryRow}>
                     <View style={[styles.rowIcon, styles.rowIconWarn]}>
                       <Ionicons
                         name="warning-outline"
@@ -668,12 +804,15 @@ export default function UploadScreen() {
                 </View>
 
                 <View style={styles.actionGroup}>
-                  <Button label="View issues" onPress={() => {}} fullWidth />
                   <Button
                     label="View library"
-                    variant="secondary"
-                    onPress={() => {}}
+                    onPress={() => router.push("/(tabs)/library")}
                     fullWidth
+                  />
+                  <Button
+                    label="Import another file"
+                    variant="ghost"
+                    onPress={handleReset}
                   />
                 </View>
               </View>
@@ -682,9 +821,7 @@ export default function UploadScreen() {
             {/* ── Error ──────────────────────────────────────────────────── */}
             {state === "error" && (
               <View style={styles.stateBlock}>
-                {/* Fox: sad */}
                 <FolioFox size={100} variant="sad" style={styles.fox} />
-
                 <StatusIcon type="error" />
                 <Text style={styles.stateTitle}>Upload failed</Text>
                 <Text style={styles.stateSubtitle}>
@@ -725,26 +862,13 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
-  pageSubtitle: {
-    fontFamily: Fonts.sans,
-    fontSize: 15,
-    color: Colors.slate,
-    lineHeight: 22,
-    marginBottom: Spacing.s24,
-  },
-
-  // ── Per-state block ───────────────────────────────────────────────────────
   stateBlock: {
     gap: Spacing.s8,
   },
-
-  // Fox sits above each state's content
   fox: {
     alignSelf: "center",
     marginBottom: Spacing.s8,
   },
-
-  // State title/subtitle (success, partial, error)
   stateTitle: {
     fontFamily: Fonts.serifBold,
     fontSize: 22,
@@ -764,8 +888,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansBold,
     color: Colors.forest,
   },
-
-  // ── Section label — matches Settings ─────────────────────────────────────
   sectionLabel: {
     fontFamily: Fonts.sansBold,
     fontSize: 12,
@@ -777,8 +899,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.s4,
     opacity: 0.7,
   },
-
-  // ── Card — matches Settings ───────────────────────────────────────────────
   card: {
     backgroundColor: Colors.white,
     borderRadius: 14,
@@ -787,14 +907,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     paddingHorizontal: Spacing.s16,
   },
-
   divider: {
     height: 1,
     backgroundColor: Colors.border,
     marginLeft: 48,
   },
-
-  // ── Drop zone ─────────────────────────────────────────────────────────────
   dropZone: {
     width: "100%",
     borderWidth: 1.5,
@@ -819,13 +936,11 @@ const styles = StyleSheet.create({
     color: Colors.slate,
     opacity: 0.7,
   },
-
-  // ── How it works rows ─────────────────────────────────────────────────────
   howRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: Spacing.s12,
-    paddingVertical: Spacing.s14 ?? 14,
+    paddingVertical: 14,
   },
   howIconWrap: {
     width: 32,
@@ -852,8 +967,6 @@ const styles = StyleSheet.create({
     color: Colors.slate,
     lineHeight: 18,
   },
-
-  // ── Privacy note ──────────────────────────────────────────────────────────
   privacyNote: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -870,8 +983,6 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
-
-  // ── File row ──────────────────────────────────────────────────────────────
   fileRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -900,11 +1011,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.slate,
   },
-
-  // ── Progress ──────────────────────────────────────────────────────────────
   progressBlock: {
     gap: Spacing.s8,
     paddingBottom: Spacing.s16,
+  },
+  processingProgress: {
+    gap: Spacing.s8,
+    marginTop: Spacing.s8,
   },
   progressTrack: {
     width: "100%",
@@ -924,13 +1037,11 @@ const styles = StyleSheet.create({
     color: Colors.slate,
     textAlign: "center",
   },
-
-  // ── Step rows ─────────────────────────────────────────────────────────────
   stepRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.s12,
-    paddingVertical: Spacing.s14 ?? 14,
+    paddingVertical: 14,
   },
   stepDot: {
     width: 22,
@@ -960,7 +1071,6 @@ const styles = StyleSheet.create({
   },
   stepLabelDone: { color: Colors.slate },
   stepLabelQueued: { color: Colors.slate, opacity: 0.5 },
-
   processingNote: {
     fontFamily: Fonts.sans,
     fontSize: 13,
@@ -970,13 +1080,11 @@ const styles = StyleSheet.create({
     marginTop: Spacing.s8,
     opacity: 0.7,
   },
-
-  // ── Summary rows ──────────────────────────────────────────────────────────
   summaryRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.s12,
-    paddingVertical: Spacing.s14 ?? 14,
+    paddingVertical: 14,
   },
   rowIcon: {
     width: 32,
@@ -1004,8 +1112,6 @@ const styles = StyleSheet.create({
   summaryValueWarn: {
     color: Colors.amber,
   },
-
-  // ── Status icon ───────────────────────────────────────────────────────────
   statusIcon: {
     width: 56,
     height: 56,
@@ -1016,8 +1122,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.s4,
     marginTop: Spacing.s8,
   },
-
-  // ── Action group ──────────────────────────────────────────────────────────
   actionGroup: {
     gap: Spacing.s8,
     marginTop: Spacing.s16,

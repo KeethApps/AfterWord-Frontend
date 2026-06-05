@@ -1,170 +1,223 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, Platform, useWindowDimensions, ImageBackground } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  ImageBackground,
+  ActivityIndicator,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { HighlightCard } from "../../../src/components/HighlightCard";
+import { EmptyState } from "../../../src/components/EmptyState";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BookCover } from "@/src/components";
+import { supabase } from "../../../lib/supabase";
 
-// Deterministic placeholder color from title string (copied from BookCover)
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Book = {
+  id: string;
+  title: string;
+  author: string;
+};
+
+type Highlight = {
+  id: string;
+  highlight_text: string;
+  location: string | null;
+  page_number: number | null;
+  note: string | null;
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function colorFromTitle(title: string): string {
   const palette = [
     Colors.forest, "#1A3D6F", "#6B2D2D", "#4A3D6B", "#2D5A3D",
-    Colors.amber, "#2D4A6B", "#5A2D6B", "#3D6B2D", "#6B5A2D",
+    Colors.amber,  "#2D4A6B", "#5A2D6B", "#3D6B2D", "#6B5A2D",
   ];
   let hash = 0;
   for (let i = 0; i < title.length; i++) hash += title.charCodeAt(i);
   return palette[hash % palette.length];
 }
 
-// Dummy data
-const BOOK_DB: Record<string, any> = {
-  "1": { title: "The Daily Stoic", author: "Ryan Holiday", highlights: 45, rating: 4.8, reviews: 120, tags: ["Philosophy", "Self-Help", "Daily"] },
-  "2": { title: "Atomic Habits", author: "James Clear", highlights: 68, rating: 4.9, reviews: 3400, tags: ["Habits", "Productivity", "Psychology"] },
-  "3": { title: "The Midnight Library", author: "Matt Haig", highlights: 31, rating: 4.5, reviews: 890, tags: ["Fiction", "Fantasy", "Mental Health"] },
-  "4": { title: "Deep Work", author: "Cal Newport", highlights: 24, rating: 4.7, reviews: 560, tags: ["Productivity", "Career", "Focus"] },
-  "5": { title: "Thinking, Fast and Slow", author: "Daniel Kahneman", highlights: 16, rating: 4.6, reviews: 1100, tags: ["Psychology", "Science", "Decision Making"] },
-  "6": { title: "The 5 AM Club", author: "Robin Sharma", highlights: 19, rating: 4.4, reviews: 420, tags: ["Self-Help", "Morning Routine"] },
-  "7": { title: "Sapiens", author: "Yuval Noah Harari", highlights: 47, rating: 4.8, reviews: 2500, tags: ["History", "Anthropology", "Science"] },
-  "8": { title: "Man's Search for Meaning", author: "Viktor Frankl", highlights: 13, rating: 4.9, reviews: 1800, tags: ["Philosophy", "Psychology", "History"] },
-};
-
-const DUMMY_HIGHLIGHTS = [
-  { id: '1', quote: "Discipline is the bridge between goals and accomplishment.", page: 45, isFavorite: true },
-  { id: '2', quote: "You do not rise to the level of your goals. You fall to the level of your systems.", page: 27, isFavorite: false },
-  { id: '3', quote: "Some things are in our control and others not.", page: 12, isFavorite: false },
-];
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function BookDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  
-  const book = BOOK_DB[id] || { 
-    title: "Unknown Book", 
-    author: "Unknown Author", 
-    highlights: 0, 
-  };
-  
-  const bgColor = colorFromTitle(book.title);
 
-  const [highlights, setHighlights] = useState(DUMMY_HIGHLIGHTS);
+  const [book, setBook] = useState<Book | null>(null);
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleFavorite = (highlightId: string) => {
-    setHighlights(prev => prev.map(h => h.id === highlightId ? { ...h, isFavorite: !h.isFavorite } : h));
-  };
+  useEffect(() => {
+    if (!id) return;
+
+    async function fetchBook() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // ── 1. Fetch book ───────────────────────────────────────────────────
+        const { data: bookData, error: bookError } = await supabase
+          .from("books")
+          .select("id, title, author")
+          .eq("id", id)
+          .single();
+
+        if (bookError || !bookData) {
+          setError("Book not found.");
+          return;
+        }
+
+        setBook(bookData);
+
+        // ── 2. Fetch highlights with their notes (left join via foreign key) ─
+        const { data: highlightData, error: highlightError } = await supabase
+          .from("highlights")
+          .select(`
+            id,
+            highlight_text,
+            location,
+            page_number,
+            notes (
+              content
+            )
+          `)
+          .eq("book_id", id)
+          .order("page_number", { ascending: true, nullsFirst: false });
+
+        if (highlightError) {
+          console.error("Highlights fetch error:", highlightError);
+          setError("Failed to load highlights.");
+          return;
+        }
+
+        const mapped: Highlight[] = (highlightData ?? []).map((h: any) => ({
+          id: h.id,
+          highlight_text: h.highlight_text,
+          location: h.location ?? null,
+          page_number: h.page_number ?? null,
+          note: h.notes?.[0]?.content ?? null,
+        }));
+
+        setHighlights(mapped);
+      } catch (err) {
+        console.error("BookDetails error:", err);
+        setError("Something went wrong.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchBook();
+  }, [id]);
+
+  const bgColor = book ? colorFromTitle(book.title) : Colors.forest;
+
+  // ─── Loading ───────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={Colors.forest} />
+      </View>
+    );
+  }
+
+  // ─── Error ─────────────────────────────────────────────────────────────────
+
+  if (error || !book) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center", padding: Spacing.s24 }]}>
+        <Pressable onPress={() => router.back()} style={{ marginBottom: Spacing.s24 }}>
+          <Ionicons name="chevron-back" size={28} color={Colors.forest} />
+        </Pressable>
+        <EmptyState
+          icon="alert-circle-outline"
+          title="Something went wrong"
+          message={error ?? "Could not load this book."}
+        />
+      </View>
+    );
+  }
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        bounces={false} 
+      <ScrollView
+        bounces={false}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
       >
-        {/* Top Colored Background Area */}
+        {/* ── Top colored hero ── */}
         <View style={[styles.topBackground, { paddingTop: Math.max(insets.top, 20) }]}>
-  {/* The Background Image Layer */}
-  <ImageBackground 
-    source={require("../../../assets/fox/fox-bg.png")} // Use dynamic URL/require here
-    style={StyleSheet.absoluteFill}
-    resizeMode="cover"
-  >
-    {/* Dark Overlay for readability */}
-    <View style={styles.imageOverlay} />
-  </ImageBackground>
-          {/* Header Navigation */}
+          <ImageBackground
+            source={require("../../../assets/fox/fox-bg.png")}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          >
+            <View style={styles.imageOverlay} />
+          </ImageBackground>
+
+          {/* Header */}
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.iconButton}>
               <Ionicons name="chevron-back" size={28} color={Colors.white} />
             </Pressable>
-            {/* <Pressable style={styles.iconButton}>
-              <Ionicons name="bookmark-outline" size={24} color={Colors.white} />
-            </Pressable> */}
           </View>
 
           {/* Book Cover */}
           <View style={styles.coverWrapper}>
             <View style={[styles.cover, { backgroundColor: bgColor }]}>
-              <View style={[styles.spine, { backgroundColor: "rgba(0,0,0,0.2)" }]} />
+              <View style={styles.spine} />
               <Text style={styles.coverTitle} numberOfLines={4}>{book.title}</Text>
               <Text style={styles.coverAuthor} numberOfLines={2}>{book.author}</Text>
             </View>
           </View>
         </View>
-        
-        {/* Bottom White Sheet */}
+
+        {/* ── Bottom white sheet ── */}
         <View style={styles.bottomSheet}>
           <View style={styles.contentContainer}>
-            {/* Title & Author */}
             <Text style={styles.bookTitle}>{book.title}</Text>
             <Text style={styles.bookAuthor}>By {book.author}</Text>
 
-            {/* Rating Row */}
-            {/* <View style={styles.ratingRow}>
-              <View style={styles.stars}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Ionicons 
-                    key={star} 
-                    name={star <= Math.round(book.rating) ? "star" : "star-outline"} 
-                    size={16} 
-                    color={Colors.amber} 
-                  />
-                ))}
-                <Text style={styles.ratingText}>{book.rating.toFixed(2)}</Text>
-              </View>
-              <View style={styles.reviews}>
-                <Ionicons name="chatbubble-outline" size={16} color={Colors.slate} style={{ opacity: 0.5 }} />
-                <Text style={styles.reviewsText}>{book.highlights} Highlights</Text>
-              </View>
-            </View> */}
-
-            {/* Description Placeholder */}
-            <Text style={styles.description}>
-              This is a beautifully written book that will change the way you think about life. 
-              It provides profound insights into human nature and offers practical advice on how to improve your daily habits and mindset. 
-              Perfect for anyone looking to grow and learn.
+            <Text style={styles.highlightCount}>
+              {highlights.length} highlight{highlights.length !== 1 ? "s" : ""}
             </Text>
 
-            {/* Tags Row */}
-            {/* {book.tags && book.tags.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsContainer}>
-                {book.tags.map((tag: string) => (
-                  <View key={tag} style={styles.tagPill}>
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-            )} */}
-
-            {/* Action Buttons */}
-            <View style={styles.actionButtonsRow}>
-              <Pressable style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>Book Edition</Text>
-              </Pressable>
-              <Pressable style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Add Highlight</Text>
-              </Pressable>
-            </View>
-
-            {/* Highlights List */}
+            {/* ── Highlights ── */}
             <View style={styles.highlightsSection}>
               <Text style={styles.sectionTitle}>Your Highlights</Text>
-              <View style={styles.highlightsList}>
-                {highlights.map((h) => (
-                  <HighlightCard
-                    key={h.id}
-                    quote={h.quote}
-                    bookTitle={book.title}
-                    author={book.author}
-                    page={h.page}
-                    isFavorite={h.isFavorite}
-                    onFavorite={() => toggleFavorite(h.id)}
-                    onShare={() => {}}
-                  />
-                ))}
-              </View>
+
+              {highlights.length === 0 ? (
+                <EmptyState
+                  icon="bookmark-outline"
+                  title="No highlights yet"
+                  message="Highlights you import from this book will appear here."
+                />
+              ) : (
+                <View style={styles.highlightsList}>
+                  {highlights.map((h) => (
+                    <HighlightCard
+                      key={h.id}
+                      quote={h.highlight_text}
+                      bookTitle={book.title}
+                      author={book.author}
+                      page={h.page_number ?? undefined}
+                      note={h.note ?? undefined}
+                    />
+                  ))}
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -173,25 +226,27 @@ export default function BookDetailsScreen() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
   },
-topBackground: {
-    alignItems: 'center',
+  topBackground: {
+    alignItems: "center",
     paddingBottom: 80,
-    overflow: 'hidden', // Required to clip the ImageBackground
-    backgroundColor: Colors.forest, // Fallback color
+    overflow: "hidden",
+    backgroundColor: Colors.forest,
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Adjust opacity to change "transparency"
+    backgroundColor: "rgba(0,0,0,0.6)",
   },
   header: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.s16,
     marginBottom: Spacing.s20,
     zIndex: 10,
@@ -206,15 +261,14 @@ topBackground: {
     shadowRadius: 16,
     elevation: 10,
     zIndex: 5,
-    marginBottom: -100, // Overlap the bottom sheet
+    marginBottom: -100,
   },
   cover: {
     width: 180,
-    aspectRatio: 2/3,
+    aspectRatio: 2 / 3,
     borderRadius: 12,
     justifyContent: "flex-end",
     padding: Spacing.s16,
-    position: "relative",
     overflow: "hidden",
   },
   spine: {
@@ -223,6 +277,7 @@ topBackground: {
     top: 0,
     bottom: 0,
     width: 14,
+    backgroundColor: "rgba(0,0,0,0.2)",
     borderTopLeftRadius: 12,
     borderBottomLeftRadius: 12,
   },
@@ -242,14 +297,14 @@ topBackground: {
     backgroundColor: Colors.white,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    paddingTop: 120, // Make room for overlapping cover
+    paddingTop: 120,
     paddingHorizontal: Spacing.s24,
     flex: 1,
   },
   contentContainer: {
     maxWidth: 600,
-    alignSelf: 'center',
-    width: '100%',
+    alignSelf: "center",
+    width: "100%",
   },
   bookTitle: {
     fontFamily: Fonts.serifBold,
@@ -261,94 +316,17 @@ topBackground: {
     fontFamily: Fonts.sans,
     fontSize: 16,
     color: Colors.slate,
-    marginBottom: Spacing.s16,
+    marginBottom: Spacing.s8,
   },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.s24,
-    gap: Spacing.s16,
-  },
-  stars: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  ratingText: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 14,
-    color: Colors.forest,
-    marginLeft: Spacing.s8,
-  },
-  reviews: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.s6,
-  },
-  reviewsText: {
+  highlightCount: {
     fontFamily: Fonts.sans,
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.slate,
-  },
-  description: {
-    fontFamily: Fonts.sans,
-    fontSize: 15,
-    color: Colors.forest,
-    lineHeight: 24,
-    opacity: 0.8,
     marginBottom: Spacing.s24,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    marginBottom: Spacing.s32,
-  },
-  tagPill: {
-    backgroundColor: Colors.cream,
-    paddingHorizontal: Spacing.s16,
-    paddingVertical: Spacing.s8,
-    borderRadius: 20,
-    marginRight: Spacing.s8,
-  },
-  tagText: {
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-    color: Colors.forest,
-    fontWeight: '500',
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    gap: Spacing.s16,
-    marginBottom: Spacing.s40,
-  },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: Colors.forest, 
-    paddingVertical: Spacing.s16,
-    borderRadius: 30,
-    alignItems: 'center',
-    elevation: 4,
-  },
-  primaryButtonText: {
-    fontFamily: Fonts.sansBold,
-    color: Colors.white,
-    fontSize: 16,
-  },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    paddingVertical: Spacing.s16,
-    borderRadius: 30,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  secondaryButtonText: {
-    fontFamily: Fonts.sansBold,
-    color: Colors.forest,
-    fontSize: 16,
+    opacity: 0.7,
   },
   highlightsSection: {
-    marginTop: Spacing.s16,
+    marginTop: Spacing.s8,
   },
   sectionTitle: {
     fontFamily: Fonts.serifBold,
