@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,10 @@ import { HighlightCard } from "../../../src/components/HighlightCard";
 import { EmptyState } from "../../../src/components/EmptyState";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { supabase } from "../../../lib/supabase";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 10;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,23 +42,25 @@ function FadeInItem({ index, children }: { index: number; children: React.ReactN
   const translateY = useRef(new Animated.Value(8)).current;
 
   useEffect(() => {
+    opacity.setValue(0);
+    translateY.setValue(8);
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
         duration: 260,
-        delay: index * 60,
+        delay: index * 40,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
       Animated.timing(translateY, {
         toValue: 0,
         duration: 260,
-        delay: index * 60,
+        delay: index * 40,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [index]);
 
   return (
     <Animated.View style={{ opacity, transform: [{ translateY }] }}>
@@ -63,25 +69,122 @@ function FadeInItem({ index, children }: { index: number; children: React.ReactN
   );
 }
 
+// ─── Pagination controls ──────────────────────────────────────────────────────
+
+function Pagination({
+  page,
+  totalPages,
+  onPrev,
+  onNext,
+  onPage,
+}: {
+  page: number;
+  totalPages: number;
+  onPrev: () => void;
+  onNext: () => void;
+  onPage: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  // Build page number buttons — show up to 5 around current page
+  const pages: (number | "...")[] = [];
+  if (totalPages <= 7) {
+    for (let i = 0; i < totalPages; i++) pages.push(i);
+  } else {
+    pages.push(0);
+    if (page > 3) pages.push("...");
+    for (let i = Math.max(1, page - 1); i <= Math.min(totalPages - 2, page + 1); i++) {
+      pages.push(i);
+    }
+    if (page < totalPages - 4) pages.push("...");
+    pages.push(totalPages - 1);
+  }
+
+  return (
+    <View style={paginationStyles.row}>
+      {/* Prev */}
+      <Pressable
+        style={[paginationStyles.navBtn, page === 0 && paginationStyles.disabled]}
+        onPress={onPrev}
+        disabled={page === 0}
+      >
+        <Ionicons
+          name="chevron-back"
+          size={16}
+          color={page === 0 ? Colors.slate : Colors.forest}
+        />
+      </Pressable>
+
+      {/* Page numbers */}
+      {pages.map((p, i) =>
+        p === "..." ? (
+          <Text key={`ellipsis-${i}`} style={paginationStyles.ellipsis}>…</Text>
+        ) : (
+          <Pressable
+            key={p}
+            style={[paginationStyles.pageBtn, p === page && paginationStyles.pageBtnActive]}
+            onPress={() => onPage(p as number)}
+          >
+            <Text
+              style={[
+                paginationStyles.pageText,
+                p === page && paginationStyles.pageTextActive,
+              ]}
+            >
+              {(p as number) + 1}
+            </Text>
+          </Pressable>
+        )
+      )}
+
+      {/* Next */}
+      <Pressable
+        style={[paginationStyles.navBtn, page === totalPages - 1 && paginationStyles.disabled]}
+        onPress={onNext}
+        disabled={page === totalPages - 1}
+      >
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={page === totalPages - 1 ? Colors.slate : Colors.forest}
+        />
+      </Pressable>
+    </View>
+  );
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HighlightsScreen() {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
 
-  // ── Fetch all highlights for the current user ──────────────────────────────
-  useEffect(() => {
-    async function fetchHighlights() {
-      setLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          setHighlights([]);
-          return;
-        }
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-        const { data, error } = await supabase
+  // ── Fetch page of highlights ───────────────────────────────────────────────
+  const fetchHighlights = useCallback(async (currentPage: number) => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setHighlights([]);
+        setTotalCount(0);
+        return;
+      }
+
+      const from = currentPage * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const [{ count }, { data, error }] = await Promise.all([
+        // Cheap count-only query
+        supabase
+          .from("highlights")
+          .select("*", { count: "exact", head: true }),
+        // Paginated data query
+        supabase
           .from("highlights")
           .select(`
             id,
@@ -94,35 +197,47 @@ export default function HighlightsScreen() {
               author
             )
           `)
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .range(from, to),
+      ]);
 
-        if (error) {
-          console.error("Highlights fetch error:", error);
-        } else {
-          const mapped: Highlight[] = (data ?? []).map((h: any) => ({
-            id: h.id,
-            highlight_text: h.highlight_text,
-            page_number: h.page_number ?? null,
-            location: h.location ?? null,
-            book: {
-              id: h.books?.id ?? "",
-              title: h.books?.title ?? "Unknown Book",
-              author: h.books?.author ?? "Unknown Author",
-            },
-          }));
-          setHighlights(mapped);
-        }
-      } catch (err) {
-        console.error("Highlights error:", err);
-      } finally {
-        setLoading(false);
+      if (error) {
+        console.error("Highlights fetch error:", error);
+      } else {
+        setTotalCount(count ?? 0);
+        const mapped: Highlight[] = (data ?? []).map((h: any) => ({
+          id: h.id,
+          highlight_text: h.highlight_text,
+          page_number: h.page_number ?? null,
+          location: h.location ?? null,
+          book: {
+            id: h.books?.id ?? "",
+            title: h.books?.title ?? "Unknown Book",
+            author: h.books?.author ?? "Unknown Author",
+          },
+        }));
+        setHighlights(mapped);
       }
+    } catch (err) {
+      console.error("Highlights error:", err);
+    } finally {
+      setLoading(false);
     }
-
-    fetchHighlights();
   }, []);
 
-  // ── Filter by search query ─────────────────────────────────────────────────
+  // Fetch on mount and page change
+  useEffect(() => {
+    fetchHighlights(page);
+  }, [page, fetchHighlights]);
+
+  // Reset to page 0 when search query changes
+  useEffect(() => {
+    setPage(0);
+  }, [query]);
+
+  // ── Client-side filter for search query ───────────────────────────────────
+  // NOTE: filters within the current page only. For full-text search across
+  // all highlights, use the dedicated Search tab.
   const filtered = highlights.filter((h) => {
     if (!query.trim()) return true;
     const q = query.toLowerCase();
@@ -132,6 +247,10 @@ export default function HighlightsScreen() {
       h.book.author.toLowerCase().includes(q)
     );
   });
+
+  function goToPage(p: number) {
+    setPage(p);
+  }
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -147,7 +266,7 @@ export default function HighlightsScreen() {
             style={styles.searchInput}
             value={query}
             onChangeText={setQuery}
-            placeholder="Search your highlights…"
+            placeholder="Filter this page…"
             placeholderTextColor={Colors.slate}
             autoCorrect={false}
           />
@@ -158,14 +277,17 @@ export default function HighlightsScreen() {
           )}
         </View>
 
-        {/* Count row */}
+        {/* Count + page info row */}
         {!loading && (
           <View style={styles.countRow}>
             <Text style={styles.countText}>
-              {query
-                ? `${filtered.length} result${filtered.length !== 1 ? "s" : ""} for "${query}"`
-                : `${highlights.length} highlight${highlights.length !== 1 ? "s" : ""}`}
+              {totalCount} highlight{totalCount !== 1 ? "s" : ""}
             </Text>
+            {totalPages > 1 && (
+              <Text style={styles.pageInfo}>
+                Page {page + 1} of {totalPages}
+              </Text>
+            )}
           </View>
         )}
 
@@ -180,27 +302,38 @@ export default function HighlightsScreen() {
           <View style={styles.emptyWrapper}>
             <EmptyState
               icon={query ? "search-outline" : "bookmark-outline"}
-              title={query ? "No results found" : "No highlights yet"}
+              title={query ? "No matches on this page" : "No highlights yet"}
               message={
                 query
-                  ? `Nothing matched "${query}". Try different keywords.`
+                  ? `Nothing on this page matched "${query}". Try the Search tab for full-library search.`
                   : "Your highlights will appear here once you import your Clippings.txt."
               }
             />
           </View>
         ) : (
-          <View style={styles.list}>
-            {filtered.map((h, i) => (
-              <FadeInItem key={h.id} index={i}>
-                <HighlightCard
-                  quote={h.highlight_text}
-                  bookTitle={h.book.title}
-                  author={h.book.author}
-                  page={h.page_number ?? undefined}
-                />
-              </FadeInItem>
-            ))}
-          </View>
+          <>
+            <View style={styles.list}>
+              {filtered.map((h, i) => (
+                <FadeInItem key={h.id} index={i}>
+                  <HighlightCard
+                    quote={h.highlight_text}
+                    bookTitle={h.book.title}
+                    author={h.book.author}
+                    page={h.page_number ?? undefined}
+                  />
+                </FadeInItem>
+              ))}
+            </View>
+
+            {/* Pagination */}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPrev={() => goToPage(page - 1)}
+              onNext={() => goToPage(page + 1)}
+              onPage={goToPage}
+            />
+          </>
         )}
       </View>
     </ScreenContainer>
@@ -230,6 +363,9 @@ const styles = StyleSheet.create({
     outlineStyle: "none" as any,
   },
   countRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.s16,
   },
   countText: {
@@ -237,10 +373,70 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.slate,
   },
+  pageInfo: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    color: Colors.slate,
+  },
   list: {
     gap: Spacing.s12,
+    marginBottom: Spacing.s24,
   },
   emptyWrapper: {
     marginTop: Spacing.s32,
+  },
+});
+
+const paginationStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.s8,
+    paddingVertical: Spacing.s16,
+    paddingBottom: Spacing.s32,
+  },
+  navBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  disabled: {
+    opacity: 0.35,
+  },
+  pageBtn: {
+    minWidth: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing.s8,
+  },
+  pageBtnActive: {
+    backgroundColor: Colors.forest,
+    borderColor: Colors.forest,
+  },
+  pageText: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.forest,
+  },
+  pageTextActive: {
+    color: Colors.white,
+    fontFamily: Fonts.sansBold,
+  },
+  ellipsis: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.slate,
+    paddingHorizontal: 4,
   },
 });
