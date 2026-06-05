@@ -28,7 +28,7 @@ export const GreetingHeader: React.FC<GreetingHeaderProps> = ({
   };
 
   // Select fox variant based on library state
-  const foxVariant = hasContent ? 'reading' : 'building';
+  const foxVariant = hasContent ? 'reading' : 'thinking';
 
   return (
     <View className="mb-6">
@@ -63,7 +63,7 @@ export const GreetingHeader: React.FC<GreetingHeaderProps> = ({
 
         {/* FolioFox Illustration (Right side) */}
         <View className="ml-4">
-          <FolioFox variant={foxVariant} width={140} height={140} />
+          <FolioFox variant={foxVariant} size={140} />
         </View>
       </View>
 

@@ -18,7 +18,10 @@ export type FolioFoxVariant =
 | "sad"
 | "laptop"
 | "ghost"
-| "secondary";
+| "secondary"
+| "telescope"
+| "question"
+| "idea";
 
 const foxVariants: Record<FolioFoxVariant, ImageSourcePropType> = {
 reading: require("../../assets/fox/fox-reading.png"),
@@ -30,6 +33,9 @@ sad: require("../../assets/fox/fox-waiting.png"),
 laptop: require("../../assets/fox/laptop.png"),
 ghost: require("../../assets/fox/fox-reading.png"),
 secondary: require("../../assets/fox/fox-reading.png"),
+telescope: require("../../assets/fox/fox-reading.png"), // fallback placeholder
+question: require("../../assets/fox/fox-reading.png"), // fallback placeholder
+idea: require("../../assets/fox/fox-reading.png"), // fallback placeholder
 };
 
 // ─── Props ───────────────────────────────────────────────────────────────────

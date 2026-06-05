@@ -67,14 +67,17 @@ export function useBookById(bookId: string) {
   });
 }
 
-export function useSearchBooks(userId: string, query: string) {
+export function useSearchBooks(query: string) {
   return useQuery({
-    queryKey: ['books', 'search', userId, query],
+    queryKey: ['books', 'search', query],
     queryFn: async (): Promise<Book[]> => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
+
       const { data, error } = await supabase
         .from('books')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', session.user.id)
         .ilike('title', `%${query}%`)
         .order('created_at', { ascending: false });
 
@@ -95,6 +98,6 @@ export function useSearchBooks(userId: string, query: string) {
         updatedAt: b.updated_at,
       }));
     },
-    enabled: !!userId && !!query,
+    enabled: !!query,
   });
 }

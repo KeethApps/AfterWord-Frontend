@@ -31,7 +31,7 @@ export default function HomeScreen() {
     <ScreenContainer padded={false}>
       <AppHeader title="AfterWord" subtitle="For the Words Worth Revisiting." />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
-        <GreetingHeader hasContent="true" userName={user?.user_metadata?.first_name || 'there'} hour={new Date().getHours()} />
+        <GreetingHeader hasContent={true} userName={user?.user_metadata?.first_name || 'there'} hour={new Date().getHours()} />
         {isLoading ? (
           <View className="flex-1 items-center justify-center py-20">
             <ActivityIndicator size="large" color="#2F4F4F" />

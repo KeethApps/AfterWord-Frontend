@@ -4,7 +4,7 @@ import { Colors, Fonts, Spacing } from "../../constants/theme";
 import { FolioFox } from "./FolioFox";
 import { Ionicons } from "@expo/vector-icons";
 
-type FoxMood = "reading" | "happy" | "thinking" | "waving" | "laptop" | "sad";
+type FoxMood = "reading" | "happy" | "thinking" | "waving" | "laptop" | "sad" | "telescope" | "question" | "idea";
 
 interface EmptyStateProps {
   title: string;

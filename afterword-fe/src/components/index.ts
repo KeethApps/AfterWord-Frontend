@@ -24,7 +24,7 @@ export { TopResultCard } from "./search/TopResultCard";
 export { BookResultRow } from "./search/BookResultRow";
 export { SearchResultsList } from "./search/SearchResultsList";
 export { SearchFilterSheet } from "./search/SearchFilterSheet";
-export { SearchNoResultsState } from "./search/NoResultsState";
+export { NoResultsState } from "./search/NoResultsState";
 
 // ─── Domain: Upload ──────────────────────────────────────────────────────────
 export * from "./upload";
