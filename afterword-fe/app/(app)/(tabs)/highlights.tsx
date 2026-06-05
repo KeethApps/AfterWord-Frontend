@@ -2,40 +2,42 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   Pressable,
   Animated,
   Easing,
   ActivityIndicator,
+  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { AppHeader } from "../../../src/components/AppHeader";
-import { HighlightCard } from "../../../src/components/HighlightCard";
-import { EmptyState } from "../../../src/components/EmptyState";
-import { ScreenContainer } from "../../../src/components/ScreenContainer";
+import { HighlightCard } from "../../../src/components/shared/HighlightCard";
+import { SearchBar } from "../../../src/components/shared/SearchBar";
+import { ScreenContainer } from "../../../src/components/common/ScreenContainer";
 import { supabase } from "../../../lib/supabase";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
+import {
+  HighlightsEmptyState, 
+  HighlightsFilterSheet 
+} from "../../../src/components/highlights";
 
 const PAGE_SIZE = 10;
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+const TABS = ["All", "Notes", "Books"];
 
 type Highlight = {
   id: string;
-  highlight_text: string;
-  page_number: number | null;
+  highlightText: string;
+  pageNumber: number | null;
   location: string | null;
+  createdAt: string;
   book: {
     id: string;
     title: string;
     author: string;
+    isbn?: string | null;
+    coverImageUrl?: string | null;
   };
 };
-
-// ─── Fade-in list item ────────────────────────────────────────────────────────
 
 function FadeInItem({ index, children }: { index: number; children: React.ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -69,8 +71,6 @@ function FadeInItem({ index, children }: { index: number; children: React.ReactN
   );
 }
 
-// ─── Pagination controls ──────────────────────────────────────────────────────
-
 function Pagination({
   page,
   totalPages,
@@ -86,7 +86,6 @@ function Pagination({
 }) {
   if (totalPages <= 1) return null;
 
-  // Build page number buttons — show up to 5 around current page
   const pages: (number | "...")[] = [];
   if (totalPages <= 7) {
     for (let i = 0; i < totalPages; i++) pages.push(i);
@@ -101,59 +100,43 @@ function Pagination({
   }
 
   return (
-    <View style={paginationStyles.row}>
-      {/* Prev */}
+    <View className="flex-row items-center justify-center py-6 gap-2">
       <Pressable
-        style={[paginationStyles.navBtn, page === 0 && paginationStyles.disabled]}
+        className={`w-9 h-9 rounded-xl border border-border bg-white items-center justify-center ${page === 0 ? 'opacity-35' : ''}`}
         onPress={onPrev}
         disabled={page === 0}
       >
-        <Ionicons
-          name="chevron-back"
-          size={16}
-          color={page === 0 ? Colors.slate : Colors.forest}
-        />
+        <Ionicons name="chevron-back" size={16} color={page === 0 ? Colors.slate : Colors.forest} />
       </Pressable>
 
-      {/* Page numbers */}
       {pages.map((p, i) =>
         p === "..." ? (
-          <Text key={`ellipsis-${i}`} style={paginationStyles.ellipsis}>…</Text>
+          <Text key={`ellipsis-${i}`} className="font-sans text-sm text-slate px-1">…</Text>
         ) : (
           <Pressable
             key={p}
-            style={[paginationStyles.pageBtn, p === page && paginationStyles.pageBtnActive]}
+            className={`min-w-[36px] h-9 rounded-xl border items-center justify-center px-2 ${
+              p === page ? "bg-forest border-forest" : "bg-white border-border"
+            }`}
             onPress={() => onPage(p as number)}
           >
-            <Text
-              style={[
-                paginationStyles.pageText,
-                p === page && paginationStyles.pageTextActive,
-              ]}
-            >
+            <Text className={`font-sans text-sm ${p === page ? "text-white font-sansBold" : "text-forest"}`}>
               {(p as number) + 1}
             </Text>
           </Pressable>
         )
       )}
 
-      {/* Next */}
       <Pressable
-        style={[paginationStyles.navBtn, page === totalPages - 1 && paginationStyles.disabled]}
+        className={`w-9 h-9 rounded-xl border border-border bg-white items-center justify-center ${page === totalPages - 1 ? 'opacity-35' : ''}`}
         onPress={onNext}
         disabled={page === totalPages - 1}
       >
-        <Ionicons
-          name="chevron-forward"
-          size={16}
-          color={page === totalPages - 1 ? Colors.slate : Colors.forest}
-        />
+        <Ionicons name="chevron-forward" size={16} color={page === totalPages - 1 ? Colors.slate : Colors.forest} />
       </Pressable>
     </View>
   );
 }
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HighlightsScreen() {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -161,10 +144,13 @@ export default function HighlightsScreen() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
+  
+  // UI State
+  const [activeTab, setActiveTab] = useState("All");
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  // ── Fetch page of highlights ───────────────────────────────────────────────
   const fetchHighlights = useCallback(async (currentPage: number) => {
     setLoading(true);
     try {
@@ -178,27 +164,37 @@ export default function HighlightsScreen() {
       const from = currentPage * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      const [{ count }, { data, error }] = await Promise.all([
-        // Cheap count-only query
-        supabase
-          .from("highlights")
-          .select("*", { count: "exact", head: true }),
-        // Paginated data query
-        supabase
-          .from("highlights")
-          .select(`
+      // We'd add real filters (notes, books) to the DB query if our schema fully supported it natively.
+      // For now, we mimic it for the UI.
+      let dbQuery = supabase.from("highlights").select('*', { count: "exact", head: true }).eq('user_id', session.user.id);
+      
+      let dataQuery = supabase.from("highlights")
+        .select(`
+          id,
+          highlight_text,
+          page_number,
+          location,
+          created_at,
+          books (
             id,
-            highlight_text,
-            page_number,
-            location,
-            books (
-              id,
-              title,
-              author
-            )
-          `)
-          .order("created_at", { ascending: false })
-          .range(from, to),
+            title,
+            author,
+            cover_image_url,
+            isbn
+          )
+        `)
+        .eq('user_id', session.user.id)
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (query) {
+        dbQuery = dbQuery.ilike('highlight_text', `%${query}%`);
+        dataQuery = dataQuery.ilike('highlight_text', `%${query}%`);
+      }
+
+      const [{ count }, { data, error }] = await Promise.all([
+        dbQuery,
+        dataQuery,
       ]);
 
       if (error) {
@@ -207,236 +203,150 @@ export default function HighlightsScreen() {
         setTotalCount(count ?? 0);
         const mapped: Highlight[] = (data ?? []).map((h: any) => ({
           id: h.id,
-          highlight_text: h.highlight_text,
-          page_number: h.page_number ?? null,
+          highlightText: h.highlight_text,
+          pageNumber: h.page_number ?? null,
           location: h.location ?? null,
+          createdAt: h.created_at,
           book: {
             id: h.books?.id ?? "",
             title: h.books?.title ?? "Unknown Book",
             author: h.books?.author ?? "Unknown Author",
+            coverImageUrl: h.books?.cover_image_url ?? null,
+            isbn: h.books?.isbn ?? null,
           },
         }));
-        setHighlights(mapped);
+
+        // Mock empty for "Notes" tab since we don't have notes relation yet
+        if (activeTab === "Notes") {
+          setHighlights([]);
+          setTotalCount(0);
+        } else {
+          setHighlights(mapped);
+        }
       }
     } catch (err) {
       console.error("Highlights error:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [query, activeTab]);
 
-  // Fetch on mount and page change
   useEffect(() => {
     fetchHighlights(page);
   }, [page, fetchHighlights]);
 
-  // Reset to page 0 when search query changes
   useEffect(() => {
     setPage(0);
-  }, [query]);
-
-  // ── Client-side filter for search query ───────────────────────────────────
-  // NOTE: filters within the current page only. For full-text search across
-  // all highlights, use the dedicated Search tab.
-  const filtered = highlights.filter((h) => {
-    if (!query.trim()) return true;
-    const q = query.toLowerCase();
-    return (
-      h.highlight_text.toLowerCase().includes(q) ||
-      h.book.title.toLowerCase().includes(q) ||
-      h.book.author.toLowerCase().includes(q)
-    );
-  });
+  }, [query, activeTab]);
 
   function goToPage(p: number) {
     setPage(p);
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────
+
+  if (isFiltersOpen) {
+    return (
+      <ScreenContainer padded={false}>
+        <AppHeader title="Highlights" />
+        <View className="px-4 flex-1">
+          <HighlightsFilterSheet 
+            onClearAll={() => {}} 
+            onApplyFilters={() => setIsFiltersOpen(false)} 
+          />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer padded={false}>
       <AppHeader title="Highlights" />
 
-      <View style={{ padding: Spacing.s20, flex: 1 }}>
-        {/* Search bar */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={18} color={Colors.slate} />
-          <TextInput
-            style={styles.searchInput}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Filter this page…"
-            placeholderTextColor={Colors.slate}
-            autoCorrect={false}
-          />
-          {query.length > 0 && (
-            <Pressable onPress={() => setQuery("")}>
-              <Ionicons name="close-circle" size={18} color={Colors.slate} />
-            </Pressable>
-          )}
+      <View className="px-4 flex-1">
+        <SearchBar
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search your highlights..."
+          onFilterPress={() => setIsFiltersOpen(true)}
+          className="mb-4"
+        />
+
+        <View className="flex-row items-center justify-between mb-6">
+          <View className="flex-row gap-2">
+            {TABS.map((tab) => (
+              <Pressable
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                className={`px-3 py-1.5 rounded-full ${activeTab === tab ? "bg-forest" : "bg-white border border-mist"}`}
+              >
+                <Text className={`font-sans text-xs ${activeTab === tab ? "text-white" : "text-forest"}`}>
+                  {tab}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
-        {/* Count + page info row */}
-        {!loading && (
-          <View style={styles.countRow}>
-            <Text style={styles.countText}>
-              {totalCount} highlight{totalCount !== 1 ? "s" : ""}
-            </Text>
-            {totalPages > 1 && (
-              <Text style={styles.pageInfo}>
-                Page {page + 1} of {totalPages}
-              </Text>
-            )}
-          </View>
+        {!loading && totalCount > 0 && (
+          <Text className="font-sans text-xs text-slate mb-4">
+            {totalCount.toLocaleString()} highlight{totalCount !== 1 ? "s" : ""}
+          </Text>
         )}
 
-        {/* Body */}
         {loading ? (
-          <ActivityIndicator
-            size="large"
-            color={Colors.forest}
-            style={{ marginTop: 60 }}
+          <ActivityIndicator size="large" color={Colors.forest} className="mt-12" />
+        ) : highlights.length === 0 ? (
+          <HighlightsEmptyState
+            type={
+              query ? "search-empty" : 
+              activeTab === "Notes" ? "no-notes" : "empty"
+            }
+            onActionPress={() => setQuery("")}
           />
-        ) : filtered.length === 0 ? (
-          <View style={styles.emptyWrapper}>
-            <EmptyState
-              icon={query ? "search-outline" : "bookmark-outline"}
-              title={query ? "No matches on this page" : "No highlights yet"}
-              message={
-                query
-                  ? `Nothing on this page matched "${query}". Try the Search tab for full-library search.`
-                  : "Your highlights will appear here once you import your Clippings.txt."
-              }
-            />
-          </View>
         ) : (
-          <>
-            <View style={styles.list}>
-              {filtered.map((h, i) => (
-                <FadeInItem key={h.id} index={i}>
+          <FlatList
+            data={highlights}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 60 }}
+            renderItem={({ item, index }) => (
+              <FadeInItem index={index}>
                   <HighlightCard
-                    quote={h.highlight_text}
-                    bookTitle={h.book.title}
-                    author={h.book.author}
-                    page={h.page_number ?? undefined}
+                    highlight={{
+                      ...item,
+                      bookId: item.book.id,
+                      userId: "",
+                      embedding: null,
+                      embeddingModel: null,
+                      lastSurfacedAt: null,
+                      book: {
+                        ...item.book,
+                        userId: "",
+                        description: null,
+                        publisher: null,
+                        publishDate: null,
+                        enrichmentStatus: "pending",
+                        createdAt: "",
+                        updatedAt: "",
+                      }
+                    }}
+                    className="mb-4"
                   />
-                </FadeInItem>
-              ))}
-            </View>
-
-            {/* Pagination */}
-            <Pagination
-              page={page}
-              totalPages={totalPages}
-              onPrev={() => goToPage(page - 1)}
-              onNext={() => goToPage(page + 1)}
-              onPage={goToPage}
-            />
-          </>
+              </FadeInItem>
+            )}
+            ListFooterComponent={
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPrev={() => goToPage(page - 1)}
+                onNext={() => goToPage(page + 1)}
+                onPage={goToPage}
+              />
+            }
+          />
         )}
       </View>
     </ScreenContainer>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 45,
-    paddingHorizontal: Spacing.s16,
-    paddingVertical: Spacing.s16,
-    gap: Spacing.s10,
-    marginBottom: Spacing.s16,
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    color: Colors.forest,
-    outlineStyle: "none" as any,
-  },
-  countRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: Spacing.s16,
-  },
-  countText: {
-    fontFamily: Fonts.sans,
-    fontSize: 13,
-    color: Colors.slate,
-  },
-  pageInfo: {
-    fontFamily: Fonts.sans,
-    fontSize: 13,
-    color: Colors.slate,
-  },
-  list: {
-    gap: Spacing.s12,
-    marginBottom: Spacing.s24,
-  },
-  emptyWrapper: {
-    marginTop: Spacing.s32,
-  },
-});
-
-const paginationStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.s8,
-    paddingVertical: Spacing.s16,
-    paddingBottom: Spacing.s32,
-  },
-  navBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  disabled: {
-    opacity: 0.35,
-  },
-  pageBtn: {
-    minWidth: 36,
-    height: 36,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: Spacing.s8,
-  },
-  pageBtnActive: {
-    backgroundColor: Colors.forest,
-    borderColor: Colors.forest,
-  },
-  pageText: {
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    color: Colors.forest,
-  },
-  pageTextActive: {
-    color: Colors.white,
-    fontFamily: Fonts.sansBold,
-  },
-  ellipsis: {
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    color: Colors.slate,
-    paddingHorizontal: 4,
-  },
-});
