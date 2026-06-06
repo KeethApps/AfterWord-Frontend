@@ -41,7 +41,7 @@ export const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ onSuggestion
 
       <View className="mt-8 bg-cream p-6 rounded-3xl items-center justify-between mb-6">
         <View className="mr-4">
-          <FolioFox size={150} variant="books" />
+          <FolioFox size={150} variant="reading" />
         </View>
         <View className="">
           <Text className="font-serifBold text-lg text-forest mb-1">
