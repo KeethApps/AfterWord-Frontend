@@ -1,83 +1,189 @@
-import React from 'react';
-import { View, Text } from 'react-native';
-import { FolioFox } from '../FolioFox';
-import { Colors, Fonts, Spacing } from '../../../constants/theme';
+import React, { useRef, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  Easing,
+} from "react-native";
+import { FolioFox } from "../FolioFox";
+import { Colors, Fonts, Spacing } from "../../../constants/theme";
+import { useProfile } from "@/hooks/auth/useProfile";
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface GreetingHeaderProps {
-  userName: string;
-  hour: number; // 0-23
-  hasContent: boolean; // true if library has books/highlights
-  variant?: 'reading' | 'building' | 'loading' | 'thinking';
+  hasContent: boolean;
 }
 
-export const GreetingHeader: React.FC<GreetingHeaderProps> = ({
-  userName,
-  hour,
-  hasContent,
-  variant = 'reading',
-}) => {
-  const getGreeting = () => {
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  };
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  const getSubtext = () => {
-    if (!hasContent) return "Let's build your library of ideas.";
-    return "Let's revisit something meaningful.";
-  };
+function getGreeting(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
 
-  // Select fox variant based on library state
-  const foxVariant = hasContent ? 'reading' : 'thinking';
+function getSubtext(hasContent: boolean): string {
+  return hasContent
+    ? "Let's revisit something meaningful."
+    : "Let's build your library of ideas.";
+}
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+
+function NameSkeleton() {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 600,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.4,
+          duration: 600,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   return (
-    <View className="mb-6">
-      {/* Greeting + Fox Row */}
-      <View className="flex-row items-center justify-between mb-4">
-        <View className="flex-1">
-          <Text
-            style={{
-              fontSize: 14,
-              fontFamily: Fonts.sans,
-              color: Colors.slate,
-              marginBottom: 2,
-            }}
-          >
-            {getGreeting()},
-          </Text>
-          <View className="flex-row items-center gap-2">
-            <Text
-              style={{
-                fontSize: 32,
-                fontFamily: Fonts.serif,
-                fontWeight: '600',
-                color: Colors.forest,
-              }}
+    <Animated.View style={[styles.skeleton, { opacity }]} />
+  );
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export const GreetingHeader: React.FC<GreetingHeaderProps> = ({
+  hasContent,
+}) => {
+  const { profile, isLoading } = useProfile();
+  const hour = new Date().getHours();
+
+  // Fade + slide in once name is ready
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const contentTranslateY = useRef(new Animated.Value(6)).current;
+
+  useEffect(() => {
+    if (!isLoading) {
+      Animated.parallel([
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentTranslateY, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isLoading]);
+
+  const foxVariant = hasContent ? "reading" : "thinking";
+  const firstName = profile?.displayName?.split(" ")[0] ?? null;
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.row}>
+        {/* Left: greeting text */}
+        <View style={styles.textBlock}>
+          <Text style={styles.greeting}>{getGreeting(hour)},</Text>
+
+          {/* Name or skeleton */}
+          {isLoading ? (
+            <NameSkeleton />
+          ) : (
+            <Animated.Text
+              style={[
+                styles.name,
+                {
+                  opacity: contentOpacity,
+                  transform: [{ translateY: contentTranslateY }],
+                },
+              ]}
             >
-              {userName}
-            </Text>
-            {/* Fox emoji as fallback; replace with FolioFox component */}
-            <Text style={{ fontSize: 24 }}>🦊</Text>
-          </View>
+              {firstName ?? "Reader"}
+            </Animated.Text>
+          )}
+
+          <Animated.Text
+            style={[
+              styles.subtext,
+              {
+                opacity: contentOpacity,
+                transform: [{ translateY: contentTranslateY }],
+              },
+            ]}
+          >
+            {getSubtext(hasContent)}
+          </Animated.Text>
         </View>
 
-        {/* FolioFox Illustration (Right side) */}
-        <View className="ml-4">
-          <FolioFox variant={foxVariant} size={140} />
+        {/* Right: fox */}
+        <View style={styles.foxWrap}>
+          <FolioFox variant={foxVariant} size={120} />
         </View>
       </View>
-
-      {/* Subtext Below */}
-      <Text
-        style={{
-          fontSize: 14,
-          fontFamily: Fonts.sans,
-          color: Colors.slate,
-          lineHeight: 20,
-        }}
-      >
-        {getSubtext()}
-      </Text>
     </View>
   );
 };
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: Spacing.s24,
+    marginTop: Spacing.s24,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  textBlock: {
+    flex: 1,
+    paddingRight: Spacing.s12,
+    gap: 4,
+  },
+  greeting: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.slate,
+    marginBottom: 2,
+  },
+  name: {
+    fontFamily: Fonts.serifBold,
+    fontSize: 34,
+    color: Colors.forest,
+    lineHeight: 40,
+  },
+  subtext: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.slate,
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  foxWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  skeleton: {
+    height: 40,
+    width: 140,
+    borderRadius: 8,
+    backgroundColor: Colors.border,
+    marginVertical: 2,
+  },
+});

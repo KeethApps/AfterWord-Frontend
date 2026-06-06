@@ -33,28 +33,28 @@ export type FolioFoxVariant =
 | "rain";
 
 const foxVariants: Record<FolioFoxVariant, ImageSourcePropType> = {
-reading: require("../../assets/fox/fox-reading.png"),
-waving: require("../../assets/fox/fox-books.png"),
-books: require("../../assets/fox/fox-books.png"),
-sleeping: require("../../assets/fox/fox-reading.png"),
-thinking: require("../../assets/fox/fox-reading.png"),
-happy: require("../../assets/fox/fox-reading.png"),
-sad: require("../../assets/fox/fox-waiting.png"),
-laptop: require("../../assets/fox/laptop.png"),
-ghost: require("../../assets/fox/fox-reading.png"),
-secondary: require("../../assets/fox/fox-reading.png"),
-telescope: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-question: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-idea: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-heart: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-notebook: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-plant: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-drop: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-coffee: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-desk: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-jumping: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-confused: require("../../assets/fox/fox-reading.png"), // fallback placeholder
-rain: require("../../assets/fox/fox-reading.png"), // fallback placeholder
+reading: require("../../assets/crane/crane-reading.png"),
+waving: require("../../assets/crane/crane-books.png"),
+books: require("../../assets/crane/crane-books.png"),
+sleeping: require("../../assets/crane/crane-reading.png"),
+thinking: require("../../assets/crane/crane-reading.png"),
+happy: require("../../assets/crane/crane-reading.png"),
+sad: require("../../assets/crane/crane-reading.png"),
+laptop: require("../../assets/crane/crane-reading.png"),
+ghost: require("../../assets/crane/crane-reading.png"),
+secondary: require("../../assets/crane/crane-reading.png"),
+telescope: require("../../assets/crane/crane-reading.png"), // fallback placeholder
+question: require("../../assets/crane/crane-question.png"), // fallback placeholder
+idea: require("../../assets/crane/crane-reading.png"), // fallback placeholder
+heart: require("../../assets/crane/crane-reading.png"), // fallback placeholder
+notebook: require("../../assets/crane/crane-notebook.png"), // fallback placeholder
+plant: require("../../assets/crane/crane-plant.png"), // fallback placeholder
+drop: require("../../assets/crane/crane-reading.png"), // fallback placeholder
+coffee: require("../../assets/crane/crane-coffee.png"), // fallback placeholder
+desk: require("../../assets/crane/crane-books.png"), // fallback placeholder
+jumping: require("../../assets/crane/crane-reading.png"), // fallback placeholder
+confused: require("../../assets/crane/crane-reading.png"), // fallback placeholder
+rain: require("../../assets/crane/crane-sad.png"), // fallback placeholder
 };
 
 // ─── Props ───────────────────────────────────────────────────────────────────
