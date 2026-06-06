@@ -29,7 +29,7 @@ export default function HomeScreen() {
 
   return (
     <ScreenContainer padded={false}>
-      <AppHeader title="AfterWord" subtitle="For the Words Worth Revisiting." />
+      <AppHeader title="AfterWord" subtitle="" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
         <GreetingHeader hasContent={true} userName={user?.user_metadata?.first_name || 'there'} hour={new Date().getHours()} />
         {isLoading ? (
@@ -38,7 +38,7 @@ export default function HomeScreen() {
           </View>
         ) : hasContent ? (
           <>
-            <DailyHighlightCard />
+            <DailyHighlightCard/>
             <LibraryStatsRow
               bookCount={books?.length || 37}
               highlightCount={highlights?.length || 1248}

@@ -18,6 +18,7 @@ import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
+import { SourceSelection } from "@/src/components/upload/SourceSelectionCard";
 import { UploadInitialState } from "@/src/components/upload/UploadInitialState";
 import { UploadSelectedState } from "@/src/components/upload/UploadSelectedState";
 import { UploadProgressState } from "@/src/components/upload/UploadProgressState";
@@ -264,6 +265,7 @@ function SectionLabel({ title }: { title: string }) {
 export default function UploadScreen() {
   const insets = useSafeAreaInsets();
   const [state, setState] = useState<UploadState>("idle");
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [file, setFile] = useState<SelectedFile | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingStep, setProcessingStep] = useState(0);
@@ -485,6 +487,7 @@ export default function UploadScreen() {
     setResult(null);
     setErrorMessage("");
     setState("idle");
+    setSelectedSource(null);
   }
 
   // ── Derive step statuses from processingStep ───────────────────────────────
@@ -541,7 +544,58 @@ export default function UploadScreen() {
         ]}
       >
         <View style={styles.inner}>
-          <AnimatedPanel stateKey={state}>
+
+          {/* ── Source Selection ─────────────────────────────────────────── */}
+          {!selectedSource && (
+  <AnimatedPanel stateKey="source-select">
+    <SourceSelection onSelect={(src) => setSelectedSource(src)} />
+  </AnimatedPanel>
+)}
+
+          {/* ── Coming Soon ───────────────────────────────────────────────── */}
+          {selectedSource && selectedSource !== "kindle" && (
+            <AnimatedPanel stateKey={`coming-soon-${selectedSource}`}>
+              <Pressable onPress={() => setSelectedSource(null)} style={styles.backRow}>
+                <Ionicons name="chevron-back" size={20} color={Colors.forest} />
+                <Text style={styles.backLabel}>Back</Text>
+              </Pressable>
+
+              <View style={styles.comingSoonBlock}>
+                <FolioFox size={120} variant="thinking" style={{ marginBottom: 24 }} />
+                <Text style={styles.comingSoonTitle}>Feature Coming Soon</Text>
+                <Text style={styles.comingSoonSubtitle}>
+                  We're working hard to support {selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} imports.
+                  Be the first to know when it launches.
+                </Text>
+                <Pressable
+                  style={styles.waitlistButton}
+                  onPress={() => {}}
+                >
+                  <Text style={styles.waitlistButtonText}>Join the Waitlist</Text>
+                </Pressable>
+                <Pressable onPress={() => setSelectedSource(null)} style={{ marginTop: 12 }}>
+                  <Text style={styles.waitlistBack}>← Choose a different source</Text>
+                </Pressable>
+              </View>
+            </AnimatedPanel>
+          )}
+
+          {/* ── Kindle Upload Flow ────────────────────────────────────────── */}
+          {selectedSource === "kindle" && (
+            <AnimatedPanel stateKey={`kindle-${state}`}>
+              {state !== "idle" && (
+                <Pressable onPress={handleReset} style={styles.backRow}>
+                  <Ionicons name="chevron-back" size={20} color={Colors.forest} />
+                  <Text style={styles.backLabel}>Back</Text>
+                </Pressable>
+              )}
+              {state === "idle" && (
+                <Pressable onPress={() => setSelectedSource(null)} style={styles.backRow}>
+                  <Ionicons name="chevron-back" size={20} color={Colors.forest} />
+                  <Text style={styles.backLabel}>Back</Text>
+                </Pressable>
+              )}
+              <AnimatedPanel stateKey={state}>
             {/* ── Idle ───────────────────────────────────────────────────── */}
             {state === "idle" && (
               <View style={styles.stateBlock}>
@@ -591,8 +645,7 @@ export default function UploadScreen() {
                     color={Colors.slate}
                   />
                   <Text style={styles.privacyText}>
-                    Your file is private and secure. We never share your
-                    highlights.
+                    Your file is private and secure.
                   </Text>
                 </View>
               </View>
@@ -833,7 +886,10 @@ export default function UploadScreen() {
                 </View>
               </View>
             )}
-          </AnimatedPanel>
+              </AnimatedPanel>
+            </AnimatedPanel>
+          )}
+
         </View>
       </ScrollView>
     </ScreenContainer>
@@ -904,6 +960,106 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: Colors.border,
     marginLeft: 48,
+  },
+  // Source selection
+  // sourceSubtitle: {
+  //   fontFamily: Fonts.sans,
+  //   fontSize: 15,
+  //   color: Colors.slate,
+  //   marginTop: 4,
+  //   marginBottom: Spacing.s24,
+  //   lineHeight: 22,
+  // },
+  // sourceQuestion: {
+  //   fontFamily: Fonts.sansBold,
+  //   fontSize: 14,
+  //   color: Colors.forest,
+  //   marginBottom: Spacing.s12,
+  // },
+  // sourceRow: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   backgroundColor: Colors.white,
+  //   borderRadius: 14,
+  //   borderWidth: 1,
+  //   borderColor: Colors.border,
+  //   paddingHorizontal: Spacing.s16,
+  //   paddingVertical: Spacing.s16,
+  //   marginBottom: Spacing.s10,
+  // },
+  // sourceIconWrap: {
+  //   width: 36,
+  //   height: 36,
+  //   borderRadius: 10,
+  //   backgroundColor: Colors.cream,
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  //   marginRight: Spacing.s12,
+  // },
+  // sourceInfo: {
+  //   flex: 1,
+  // },
+  // sourceLabel: {
+  //   fontFamily: Fonts.sansBold,
+  //   fontSize: 15,
+  //   color: Colors.forest,
+  //   marginBottom: 2,
+  // },
+  // sourceDetail: {
+  //   fontFamily: Fonts.sans,
+  //   fontSize: 12,
+  //   color: Colors.slate,
+  // },
+  // Back button
+  backRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.s16,
+    gap: 4,
+  },
+  backLabel: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 15,
+    color: Colors.forest,
+  },
+  // Coming soon
+  comingSoonBlock: {
+    alignItems: "center",
+    paddingTop: Spacing.s24,
+  },
+  comingSoonTitle: {
+    fontFamily: Fonts.serifBold,
+    fontSize: 24,
+    color: Colors.forest,
+    marginBottom: Spacing.s12,
+    textAlign: "center",
+  },
+  comingSoonSubtitle: {
+    fontFamily: Fonts.sans,
+    fontSize: 15,
+    color: Colors.slate,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: Spacing.s32,
+    paddingHorizontal: Spacing.s8,
+  },
+  waitlistButton: {
+    backgroundColor: Colors.forest,
+    borderRadius: 12,
+    paddingVertical: Spacing.s16,
+    paddingHorizontal: Spacing.s40,
+    alignItems: "center",
+  },
+  waitlistButtonText: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 16,
+    color: Colors.white,
+  },
+  waitlistBack: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.slate,
+    textAlign: "center",
   },
   dropZone: {
     width: "100%",

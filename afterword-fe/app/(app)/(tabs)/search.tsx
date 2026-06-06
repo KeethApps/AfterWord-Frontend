@@ -27,7 +27,7 @@ import { supabase } from "../../../lib/supabase";
 import { useSearchBooks } from "../../../hooks/queries/books";
 
 const RECENT_SEARCHES_KEY = "@afterword_recent_searches";
-const TABS = ["Quotes", "Ideas", "Books", "Authors", "Topics"];
+// const TABS = ["Quotes", "Ideas", "Books", "Authors", "Topics"];
 
 interface QuoteResult {
   highlight_text: string;
@@ -133,7 +133,7 @@ export default function SearchScreen() {
 
   const renderTabs = () => (
     <View className="mb-4">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      {/* <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab;
           return (
@@ -150,7 +150,7 @@ export default function SearchScreen() {
             </Pressable>
           );
         })}
-      </ScrollView>
+      </ScrollView> */}
     </View>
   );
 
@@ -293,7 +293,7 @@ export default function SearchScreen() {
         <SearchBar
           value={query}
           onChangeText={setQuery}
-          placeholder="Search quotes, books, authors, topics..."
+          placeholder="Search concepts and ideas..."
           rightIcon="mic-outline"
           className="mb-2"
         />
