@@ -90,7 +90,7 @@ export const GreetingHeader: React.FC<GreetingHeaderProps> = ({
     }
   }, [isLoading]);
 
-  const foxVariant = hasContent ? "reading" : "thinking";
+  const foxVariant = hasContent ? "waving" : "sad";
   const firstName = profile?.displayName?.split(" ")[0] ?? null;
 
   return (

@@ -132,7 +132,6 @@ export default function LibraryScreen() {
               {renderTab("All Books", "all")}
               {renderTab("Recently Read", "recent")}
               {renderTab("Most Highlighted", "highlighted")}
-              {renderTab("Genres", "genres")}
             </ScrollView>
           </View>
           <Pressable 

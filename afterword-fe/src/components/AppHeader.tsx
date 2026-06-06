@@ -60,7 +60,7 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
             ]}
           >
             <Image
-              source={require("../../assets/fox/fox-icon.png")}
+              source={require("../../assets/crane/crane-icon.jpg")}
               style={styles.avatarImage}
             />
           </Pressable>

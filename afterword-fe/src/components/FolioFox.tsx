@@ -34,13 +34,13 @@ export type FolioFoxVariant =
 
 const foxVariants: Record<FolioFoxVariant, ImageSourcePropType> = {
 reading: require("../../assets/crane/crane-reading.png"),
-waving: require("../../assets/crane/crane-books.png"),
+waving: require("../../assets/crane/crane-default.png"),
 books: require("../../assets/crane/crane-books.png"),
-sleeping: require("../../assets/crane/crane-reading.png"),
+sleeping: require("../../assets/crane/crane-sleeping.png"),
 thinking: require("../../assets/crane/crane-reading.png"),
-happy: require("../../assets/crane/crane-reading.png"),
+happy: require("../../assets/crane/crane-default.png"),
 sad: require("../../assets/crane/crane-reading.png"),
-laptop: require("../../assets/crane/crane-reading.png"),
+laptop: require("../../assets/crane/crane-laptop.png"),
 ghost: require("../../assets/crane/crane-reading.png"),
 secondary: require("../../assets/crane/crane-reading.png"),
 telescope: require("../../assets/crane/crane-reading.png"), // fallback placeholder

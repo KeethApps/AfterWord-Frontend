@@ -27,7 +27,7 @@ interface HighlightCardProps {
 }
 
 const afterwordLogo = require("../../assets/fox/fox-icon.png");
-const foxReading = require("../../assets/fox/fox-reading.png");
+const foxReading = require("../../assets/crane/crane-reading.png");
 
 export function HighlightCard({
   quote,
