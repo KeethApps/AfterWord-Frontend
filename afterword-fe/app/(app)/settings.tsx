@@ -14,50 +14,65 @@ import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
+import { FolioFox } from "../../src/components/FolioFox";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type NavRowProps = {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
+  value?: string;
+  danger?: boolean;
   onPress?: () => void;
 };
 
 type ToggleRowProps = {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
-  description?: string;
   value: boolean;
   onToggle: (v: boolean) => void;
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function NavRow({ icon, label, onPress }: NavRowProps) {
+function NavRow({ icon, label, value, danger = false, onPress }: NavRowProps) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
     >
-      <View style={styles.rowIcon}>
-        <Ionicons name={icon} size={20} color={Colors.forest} />
-      </View>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Ionicons name="chevron-forward" size={18} color={Colors.slate} style={{ opacity: 0.5 }} />
+      <Ionicons
+        name={icon}
+        size={20}
+        color={danger ? Colors.danger ?? "#C0392B" : Colors.forest}
+        style={styles.rowLeadIcon}
+      />
+      <Text style={[styles.rowLabel, danger && styles.rowLabelDanger]}>
+        {label}
+      </Text>
+      {value ? (
+        <Text style={styles.rowValue}>{value}</Text>
+      ) : null}
+      <Ionicons
+        name="chevron-forward"
+        size={16}
+        color={danger ? Colors.danger ?? "#C0392B" : Colors.slate}
+        style={{ opacity: danger ? 0.7 : 0.45 }}
+      />
     </Pressable>
   );
 }
 
-function ToggleRow({ icon, label, description, value, onToggle }: ToggleRowProps) {
+function ToggleRow({ icon, label, value, onToggle }: ToggleRowProps) {
   return (
     <View style={styles.row}>
-      <View style={styles.rowIcon}>
-        <Ionicons name={icon} size={20} color={Colors.forest} />
-      </View>
-      <View style={styles.toggleInfo}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        {description && <Text style={styles.rowDesc}>{description}</Text>}
-      </View>
+      <Ionicons
+        name={icon}
+        size={20}
+        color={Colors.forest}
+        style={styles.rowLeadIcon}
+      />
+      <Text style={styles.rowLabel}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onToggle}
@@ -81,9 +96,7 @@ function SectionLabel({ title }: { title: string }) {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const [dailyHighlight, setDailyHighlight] = React.useState(true);
-  const [offlineMode, setOfflineMode] = React.useState(true);
-  const [analytics, setAnalytics] = React.useState(false);
+  const [dailyReminder, setDailyReminder] = React.useState(true);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -91,177 +104,109 @@ export default function SettingsScreen() {
   }
 
   const userEmail = user?.email ?? "";
-  const userInitial = userEmail.charAt(0).toUpperCase() || "?";
-  const displayName = userEmail.split("@")[0] || "Reader";
 
-return (
-  <ScreenContainer padded={false}>
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={[
-        styles.scroll,
-        { paddingBottom: Math.max(insets.bottom, 32) },
-      ]}
-    >
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + Spacing.s12,
-          },
+  return (
+    <ScreenContainer padded={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: Math.max(insets.bottom + 16, 40) },
         ]}
       >
-        <Pressable
-          style={({ pressed }) => [
-            styles.backButton,
-            pressed && { opacity: 0.7 },
-          ]}
-          onPress={() => router.back()}
-        >
-          <Ionicons
-            name="arrow-back"
-            size={20}
-            color={Colors.forest}
-          />
-        </Pressable>
-
-        <View style={styles.headerText}>
-          <Text style={styles.pageTitle}>Settings</Text>
-
-          <Text style={styles.pageSubtitle}>
-            Personalise your reading sanctuary
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.inner}>
-        {/* ── Profile hero ─────────────────────────────────────────────── */}
-        <View style={styles.profileHero}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {userInitial}
-            </Text>
-          </View>
-
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>
-              {displayName}
-            </Text>
-
-            <Text style={styles.profileEmail}>
-              {userEmail}
-            </Text>
-          </View>
-        </View>
-
-        {/* ── Folio Banner ─────────────────────────────────────────────── */}
-        <Pressable style={styles.bannerCard}>
-          <View
-            style={[
-              styles.bannerBlob,
-              styles.bannerBlobAmber,
-            ]}
-          />
-
-          <View
-            style={[
-              styles.bannerBlob,
-              styles.bannerBlobTeal,
-            ]}
-          />
-
-          <View style={styles.bannerContent}>
-            <Text style={styles.bannerEyebrow}>
-              Your reading companion
-            </Text>
-
-            <Text style={styles.bannerTitle}>
-              Folio is here to help
-            </Text>
-
-            <Text style={styles.bannerSub}>
-              Build your personal archive of ideas,
-              insights, and forgotten passages.
-            </Text>
-          </View>
-
-          <Text style={styles.bannerMonogram}>
-            AW
-          </Text>
-        </Pressable>
-
-          {/* ── Account ──────────────────────────────────────────────────── */}
-          <SectionLabel title="Account" />
-          <View style={styles.card}>
-            <NavRow icon="person-outline" label="Manage profile" />
-            <RowDivider />
-            <NavRow icon="cloud-upload-outline" label="Export data" />
-            <RowDivider />
-            <NavRow icon="cloud-download-outline" label="Import data" />
-          </View>
-
-          {/* ── Preferences ──────────────────────────────────────────────── */}
-          <SectionLabel title="Preferences" />
-          <View style={styles.card}>
-            <ToggleRow
-              icon="sunny-outline"
-              label="Daily highlight email"
-              description="Send me an email of my daily highlight."
-              value={dailyHighlight}
-              onToggle={setDailyHighlight}
-            />
-            <RowDivider />
-            <ToggleRow
-              icon="wifi-outline"
-              label="Offline mode"
-              description="Keep your library available without internet."
-              value={offlineMode}
-              onToggle={setOfflineMode}
-            />
-            <RowDivider />
-            <ToggleRow
-              icon="bar-chart-outline"
-              label="Analytics"
-              description="Share anonymous usage data to help improve the app."
-              value={analytics}
-              onToggle={setAnalytics}
-            />
-          </View>
-
-          {/* ── Support ──────────────────────────────────────────────────── */}
-          <SectionLabel title="Support" />
-          <View style={styles.card}>
-            <NavRow icon="help-circle-outline" label="Help & support" />
-            <RowDivider />
-            <NavRow icon="bug-outline" label="Report a bug" />
-            <RowDivider />
-            <NavRow icon="document-text-outline" label="Privacy policy" />
-            <RowDivider />
-            <NavRow icon="reader-outline" label="Terms of service" />
-          </View>
-
-          {/* ── About ────────────────────────────────────────────────────── */}
-          <SectionLabel title="About" />
-          <View style={styles.card}>
-            <View style={styles.row}>
-              <View style={styles.rowIcon}>
-                <Ionicons name="information-circle-outline" size={20} color={Colors.forest} />
-              </View>
-              <Text style={styles.rowLabel}>Version</Text>
-              <Text style={styles.rowValue}>v1.0.0 Preview</Text>
-            </View>
-          </View>
-
-          {/* ── Sign out ─────────────────────────────────────────────────── */}
+        {/* ── Header ──────────────────────────────────────────────────── */}
+        <View style={[styles.header, { paddingTop: insets.top + Spacing.s16 }]}>
           <Pressable
-            style={({ pressed }) => [styles.signOutButton, pressed && styles.signOutButtonPressed]}
-            onPress={handleSignOut}
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}
           >
-            <Ionicons name="log-out-outline" size={18} color="#C0392B" />
-            <Text style={styles.signOutText}>Sign out</Text>
+            <Ionicons name="chevron-back" size={22} color={Colors.forest} />
           </Pressable>
 
+          <View style={styles.headerText}>
+            <Text style={styles.pageTitle}>Settings</Text>
+            <Text style={styles.pageSubtitle}>Customize your experience</Text>
+          </View>
+
+          <View style={styles.foxWrap}>
+            <FolioFox variant="reading" size={64} />
+          </View>
+        </View>
+
+        <View style={styles.inner}>
+          {/* ── Account ─────────────────────────────────────────────── */}
+          <SectionLabel title="Account" />
+          <View style={styles.card}>
+            <NavRow icon="person-outline" label="Profile Information" />
+            <RowDivider />
+            <NavRow icon="mail-outline" label="Email" value={userEmail} />
+            <RowDivider />
+            <NavRow icon="lock-closed-outline" label="Password" />
+          </View>
+
+          {/* ── Preferences ─────────────────────────────────────────── */}
+          <SectionLabel title="Preferences" />
+          <View style={styles.card}>
+            <NavRow icon="color-palette-outline" label="Theme" value="System" />
+            <RowDivider />
+            <NavRow icon="text-outline" label="Font" value="Serif" />
+            <RowDivider />
+            <NavRow icon="resize-outline" label="Text Size" value="Medium" />
+            <RowDivider />
+            <NavRow icon="brush-outline" label="Highlight Color" />
+            <RowDivider />
+            <ToggleRow
+              icon="notifications-outline"
+              label="Daily Reminder"
+              value={dailyReminder}
+              onToggle={setDailyReminder}
+            />
+          </View>
+
+          {/* ── Data & Sync ──────────────────────────────────────────── */}
+          <SectionLabel title="Data & Sync" />
+          <View style={styles.card}>
+            <NavRow icon="cloud-outline" label="Backup & Sync" value="On" />
+            <RowDivider />
+            <NavRow icon="cloud-upload-outline" label="Import Highlights" />
+            <RowDivider />
+            <NavRow icon="cloud-download-outline" label="Export Data" />
+            <RowDivider />
+            <NavRow
+              icon="trash-outline"
+              label="Delete Account"
+              danger
+              onPress={() => {}}
+            />
+          </View>
+
+          {/* ── Other ───────────────────────────────────────────────── */}
+          <SectionLabel title="Other" />
+          <View style={styles.card}>
+            <NavRow icon="help-circle-outline" label="Help & Support" />
+            <RowDivider />
+            <NavRow icon="gift-outline" label="What's New" />
+            <RowDivider />
+            <NavRow icon="information-circle-outline" label="About AfterWord" />
+          </View>
+
+          {/* ── Sign out ─────────────────────────────────────────────── */}
+          <Pressable
+            onPress={handleSignOut}
+            style={({ pressed }) => [
+              styles.logOutRow,
+              pressed && { opacity: 0.6 },
+            ]}
+          >
+            <Ionicons
+              name="log-out-outline"
+              size={18}
+              color={Colors.danger ?? "#C0392B"}
+            />
+            <Text style={styles.logOutText}>Log Out</Text>
+          </Pressable>
+
+          <Text style={styles.version}>v1.4.2</Text>
         </View>
       </ScrollView>
     </ScreenContainer>
@@ -269,356 +214,139 @@ return (
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
+    backgroundColor: Colors.cream,
   },
 
   // ── Header ──────────────────────────────────────────────────────────────
   header: {
-    paddingHorizontal: Spacing.s20,
-    paddingBottom: Spacing.s20,
-
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-
-    backgroundColor: Colors.cream,
-
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: Spacing.s20,
+    paddingBottom: Spacing.s20,
+    backgroundColor: Colors.cream,
   },
-
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 999,
-
-    alignItems: "center",
-    justifyContent: "center",
-
-    backgroundColor: Colors.white,
-
-    borderWidth: 1,
-    borderColor: Colors.border,
-
-    marginRight: Spacing.s16,
+  backBtn: {
+    marginRight: Spacing.s12,
+    padding: 4,
   },
-
   headerText: {
     flex: 1,
   },
-
   pageTitle: {
     fontFamily: Fonts.serifBold,
-    fontSize: 30,
+    fontSize: 32,
     color: Colors.forest,
+    lineHeight: 38,
   },
-
   pageSubtitle: {
-    marginTop: 2,
-
     fontFamily: Fonts.sans,
     fontSize: 14,
     color: Colors.slate,
+    marginTop: 2,
+  },
+  foxWrap: {
+    marginLeft: Spacing.s8,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
 
-  // ── Content Wrapper ─────────────────────────────────────────────────────
+  // ── Inner ────────────────────────────────────────────────────────────────
   inner: {
     paddingHorizontal: Spacing.s20,
-    paddingTop: Spacing.s24,
-
     maxWidth: 720,
     width: "100%",
     alignSelf: "center",
   },
 
-  // ── Profile Hero ────────────────────────────────────────────────────────
-  profileHero: {
-    flexDirection: "row",
-    alignItems: "center",
-
-    backgroundColor: Colors.white,
-
-    borderWidth: 1,
-    borderColor: Colors.border,
-
-    borderRadius: 24,
-
-    padding: Spacing.s20,
-
-    marginBottom: Spacing.s24,
-  },
-
-  profileInfo: {
-    flex: 1,
-  },
-
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 999,
-
-    backgroundColor: Colors.forest,
-
-    alignItems: "center",
-    justifyContent: "center",
-
-    marginRight: Spacing.s16,
-
-    borderWidth: 3,
-    borderColor: Colors.gold,
-  },
-
-  avatarText: {
-    fontFamily: Fonts.serifBold,
-    fontSize: 30,
-    color: Colors.cream,
-  },
-
-  profileName: {
-    fontFamily: Fonts.serifBold,
-    fontSize: 24,
-    color: Colors.forest,
-
-    marginBottom: 2,
-  },
-
-  profileEmail: {
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    color: Colors.slate,
-  },
-
-  // ── Banner Card ─────────────────────────────────────────────────────────
-  bannerCard: {
-    backgroundColor: Colors.forest,
-
-    borderRadius: 24,
-
-    overflow: "hidden",
-
-    padding: Spacing.s24,
-
-    marginBottom: Spacing.s24,
-
-    minHeight: 140,
-
-    justifyContent: "center",
-
-    position: "relative",
-  },
-
-  bannerBlob: {
-    position: "absolute",
-    borderRadius: 999,
-    opacity: 0.16,
-  },
-
-  bannerBlobAmber: {
-    width: 140,
-    height: 120,
-
-    backgroundColor: Colors.amber,
-
-    right: -20,
-    top: -30,
-  },
-
-  bannerBlobTeal: {
-    width: 90,
-    height: 80,
-
-    backgroundColor: "#4a9b8a",
-
-    right: 50,
-    bottom: -20,
-  },
-
-  bannerContent: {
-    flex: 1,
-    zIndex: 1,
-  },
-
-  bannerEyebrow: {
-    fontFamily: Fonts.sans,
-    fontSize: 11,
-
-    color: Colors.gold,
-
-    letterSpacing: 1,
-    textTransform: "uppercase",
-
-    marginBottom: 6,
-
-    opacity: 0.9,
-  },
-
-  bannerTitle: {
-    fontFamily: Fonts.serifBold,
-    fontSize: 24,
-
-    color: Colors.white,
-
-    marginBottom: 8,
-  },
-
-  bannerSub: {
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-
-    color: "rgba(255,255,255,0.72)",
-
-    lineHeight: 22,
-
-    maxWidth: "85%",
-  },
-
-  bannerMonogram: {
-    position: "absolute",
-
-    right: 12,
-    bottom: -12,
-
-    fontFamily: Fonts.serifBold,
-    fontSize: 92,
-
-    color: "rgba(255,255,255,0.05)",
-
-    zIndex: 0,
-
-    userSelect: "none",
-  } as any,
-
-  // ── Section Labels ──────────────────────────────────────────────────────
+  // ── Section label — plain weight, matches mockup ─────────────────────────
   sectionLabel: {
     fontFamily: Fonts.sansBold,
-    fontSize: 11,
-
-    color: Colors.slate,
-
-    letterSpacing: 1,
-    textTransform: "uppercase",
-
+    fontSize: 14,
+    color: Colors.forest,
     marginTop: Spacing.s24,
     marginBottom: Spacing.s10,
-
     paddingHorizontal: Spacing.s4,
-
-    opacity: 0.7,
   },
 
-  // ── Card Containers ─────────────────────────────────────────────────────
+  // ── Card ─────────────────────────────────────────────────────────────────
   card: {
     backgroundColor: Colors.white,
-
-    borderRadius: 20,
-
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-
     overflow: "hidden",
   },
 
-  // ── Rows ────────────────────────────────────────────────────────────────
+  // ── Row ──────────────────────────────────────────────────────────────────
   row: {
     flexDirection: "row",
     alignItems: "center",
-
-    paddingHorizontal: Spacing.s18,
-    paddingVertical: Spacing.s20,
-
-    gap: Spacing.s32,
-
+    paddingHorizontal: Spacing.s16,
+    paddingVertical: 15,
     backgroundColor: Colors.white,
+    gap: Spacing.s12,
   },
-
   rowPressed: {
-    backgroundColor: "#F7F4EC",
+    backgroundColor: Colors.cream,
   },
-
-  rowIcon: {
-    width: 34,
-    height: 34,
-
-    borderRadius: 10,
-
-    backgroundColor: "#F0F4F0",
-    marginLeft: Spacing.s10,
-    alignItems: "center",
-    justifyContent: "center",
+  rowLeadIcon: {
+    width: 24,
+    textAlign: "center",
   },
-
   rowLabel: {
     flex: 1,
-
     fontFamily: Fonts.sans,
     fontSize: 15,
-
     color: Colors.forest,
-
     fontWeight: "500",
   },
-
-  rowDesc: {
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-
-    color: Colors.slate,
-
-    marginTop: 2,
-
-    lineHeight: 20,
+  rowLabelDanger: {
+    color: Colors.danger ?? "#C0392B",
   },
-
   rowValue: {
     fontFamily: Fonts.sans,
-    fontSize: 13,
-
+    fontSize: 14,
     color: Colors.slate,
-
-  },
-
-  toggleInfo: {
-    flex: 1,
+    marginRight: 2,
   },
 
   divider: {
     height: 1,
-
     backgroundColor: Colors.border,
-
-    marginLeft: 0,
+    marginLeft: 52, // aligns under label text, past icon
   },
 
-  // ── Sign Out ────────────────────────────────────────────────────────────
-  signOutButton: {
+  // ── Log out ──────────────────────────────────────────────────────────────
+  logOutRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-
-    gap: Spacing.s10,
-
+    gap: Spacing.s8,
     marginTop: Spacing.s32,
-    marginBottom: Spacing.s32,
-
-    paddingVertical: Spacing.s24,
-
-    borderRadius: 18,
-
-    borderWidth: 1,
-    borderColor: "#F5C6C6",
-
-    backgroundColor: "#FEF2F2",
+    paddingVertical: Spacing.s8,
   },
-
-  signOutButtonPressed: {
-    backgroundColor: "#FECACA",
-  },
-
-  signOutText: {
+  logOutText: {
     fontFamily: Fonts.sansBold,
     fontSize: 15,
-
-    color: "#C0392B",
+    color: Colors.danger ?? "#C0392B",
+  },
+  version: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    color: Colors.slate,
+    opacity: 0.5,
+    textAlign: "center",
+    marginTop: Spacing.s8,
   },
 });
