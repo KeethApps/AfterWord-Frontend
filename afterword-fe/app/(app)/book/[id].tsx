@@ -1,48 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
-  StyleSheet,
-  ScrollView,
+  FlatList,
   Pressable,
-  ImageBackground,
   ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Fonts, Spacing } from "../../../constants/theme";
-import { HighlightCard } from "../../../src/components/HighlightCard";
-import { EmptyState } from "../../../src/components/EmptyState";
+import { Colors, Fonts } from "../../../constants/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
+import { BookCover } from "../../../src/components/shared/BookCover";
+import { HighlightCard } from "../../../src/components/shared/HighlightCard";
+import { HighlightWithBook } from "../../../types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Book = {
+type BookDetail = {
   id: string;
   title: string;
   author: string;
+  isbn?: string | null;
+  coverImageUrl?: string | null;
+  description?: string | null;
+  publisher?: string | null;
+  publishDate?: string | null;
 };
 
-type Highlight = {
+type HighlightRaw = {
   id: string;
-  highlight_text: string;
+  highlightText: string;
   location: string | null;
-  page_number: number | null;
-  note: string | null;
+  pageNumber: number | null;
+  createdAt: string;
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function colorFromTitle(title: string): string {
-  const palette = [
-    Colors.forest, "#1A3D6F", "#6B2D2D", "#4A3D6B", "#2D5A3D",
-    Colors.amber,  "#2D4A6B", "#5A2D6B", "#3D6B2D", "#6B5A2D",
-  ];
-  let hash = 0;
-  for (let i = 0; i < title.length; i++) hash += title.charCodeAt(i);
-  return palette[hash % palette.length];
-}
+const PAGE_SIZE = 15;
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -51,290 +45,309 @@ export default function BookDetailsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [book, setBook] = useState<Book | null>(null);
-  const [highlights, setHighlights] = useState<Highlight[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [book, setBook] = useState<BookDetail | null>(null);
+  const [bookLoading, setBookLoading] = useState(true);
+  const [bookError, setBookError] = useState<string | null>(null);
+
+  const [highlights, setHighlights] = useState<HighlightRaw[]>([]);
+  const [totalHighlightCount, setTotalHighlightCount] = useState(0);
+  const [highlightsLoading, setHighlightsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const pageRef = useRef(0);
+
+  const [showFullDescription, setShowFullDescription] = useState(false);
+
+  // ─── Fetch Book ────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!id) return;
-
     async function fetchBook() {
-      setLoading(true);
-      setError(null);
-
+      setBookLoading(true);
       try {
-        // ── 1. Fetch book ───────────────────────────────────────────────────
-        const { data: bookData, error: bookError } = await supabase
+        const { data, error } = await supabase
           .from("books")
-          .select("id, title, author")
+          .select("id, title, author, isbn, cover_image_url, description, publisher, publish_date")
           .eq("id", id)
           .single();
-
-        if (bookError || !bookData) {
-          setError("Book not found.");
-          return;
-        }
-
-        setBook(bookData);
-
-        // ── 2. Fetch highlights with their notes (left join via foreign key) ─
-        const { data: highlightData, error: highlightError } = await supabase
-          .from("highlights")
-          .select(`
-            id,
-            highlight_text,
-            location,
-            page_number,
-            notes (
-              content
-            )
-          `)
-          .eq("book_id", id)
-          .order("page_number", { ascending: true, nullsFirst: false });
-
-        if (highlightError) {
-          console.error("Highlights fetch error:", highlightError);
-          setError("Failed to load highlights.");
-          return;
-        }
-
-        const mapped: Highlight[] = (highlightData ?? []).map((h: any) => ({
-          id: h.id,
-          highlight_text: h.highlight_text,
-          location: h.location ?? null,
-          page_number: h.page_number ?? null,
-          note: h.notes?.[0]?.content ?? null,
-        }));
-
-        setHighlights(mapped);
-      } catch (err) {
-        console.error("BookDetails error:", err);
-        setError("Something went wrong.");
+        if (error || !data) { setBookError("Book not found."); return; }
+        setBook({
+          id: data.id,
+          title: data.title,
+          author: data.author,
+          isbn: data.isbn,
+          coverImageUrl: data.cover_image_url,
+          description: data.description,
+          publisher: data.publisher,
+          publishDate: data.publish_date,
+        });
+      } catch {
+        setBookError("Something went wrong.");
       } finally {
-        setLoading(false);
+        setBookLoading(false);
       }
     }
-
     fetchBook();
   }, [id]);
 
-  const bgColor = book ? colorFromTitle(book.title) : Colors.forest;
+  // ─── Fetch Highlights (paginated) ──────────────────────────────────────────
 
-  // ─── Loading ───────────────────────────────────────────────────────────────
+  const fetchHighlights = useCallback(async (page: number) => {
+    if (!id || highlightsLoading) return;
+    setHighlightsLoading(true);
+    try {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
 
-  if (loading) {
+      const [countRes, dataRes] = await Promise.all([
+        supabase
+          .from("highlights")
+          .select("id", { count: "exact", head: true })
+          .eq("book_id", id),
+        supabase
+          .from("highlights")
+          .select("id, highlight_text, location, page_number, created_at")
+          .eq("book_id", id)
+          .order("created_at", { ascending: false })
+          .range(from, to),
+      ]);
+
+      if (page === 0 && countRes.count !== null) {
+        setTotalHighlightCount(countRes.count);
+      }
+
+      const mapped: HighlightRaw[] = (dataRes.data ?? []).map((h: any) => ({
+        id: h.id,
+        highlightText: h.highlight_text,
+        location: h.location ?? null,
+        pageNumber: h.page_number ?? null,
+        createdAt: h.created_at,
+      }));
+
+      setHighlights((prev) => (page === 0 ? mapped : [...prev, ...mapped]));
+      setHasMore(mapped.length === PAGE_SIZE);
+    } catch (err) {
+      console.error("Highlights fetch error:", err);
+    } finally {
+      setHighlightsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    pageRef.current = 0;
+    setHighlights([]);
+    setHasMore(true);
+    fetchHighlights(0);
+  }, [id]);
+
+  const loadMore = useCallback(() => {
+    if (!hasMore || highlightsLoading) return;
+    const nextPage = pageRef.current + 1;
+    pageRef.current = nextPage;
+    fetchHighlights(nextPage);
+  }, [hasMore, highlightsLoading, fetchHighlights]);
+
+  // ─── Loading / Error ───────────────────────────────────────────────────────
+
+  if (bookLoading) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.cream }}>
         <ActivityIndicator size="large" color={Colors.forest} />
       </View>
     );
   }
 
-  // ─── Error ─────────────────────────────────────────────────────────────────
-
-  if (error || !book) {
+  if (bookError || !book) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center", padding: Spacing.s24 }]}>
-        <Pressable onPress={() => router.back()} style={{ marginBottom: Spacing.s24 }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24, backgroundColor: Colors.cream }}>
+        <Pressable onPress={() => router.back()} style={{ position: "absolute", top: insets.top + 12, left: 16, padding: 8 }}>
           <Ionicons name="chevron-back" size={28} color={Colors.forest} />
         </Pressable>
-        <EmptyState
-          icon="alert-circle-outline"
-          title="Something went wrong"
-          message={error ?? "Could not load this book."}
-        />
+        <Ionicons name="alert-circle-outline" size={48} color={Colors.slate} style={{ marginBottom: 16 }} />
+        <Text style={{ fontFamily: Fonts!.serifBold, fontSize: 20, color: Colors.forest, marginBottom: 8, textAlign: "center" }}>
+          Something went wrong
+        </Text>
+        <Text style={{ fontFamily: Fonts!.sans, fontSize: 15, color: Colors.slate, textAlign: "center" }}>
+          {bookError ?? "Could not load this book."}
+        </Text>
       </View>
     );
   }
 
+  const publishYear = book.publishDate ? new Date(book.publishDate).getFullYear() : null;
+  const isLongDescription = (book.description ?? "").length > 180;
+
+  // ─── List Header (hero + stats + about) ───────────────────────────────────
+
+  const ListHeader = (
+    <View>
+      {/* Top nav */}
+      <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
+          <Ionicons name="chevron-back" size={28} color={Colors.forest} />
+        </Pressable>
+        <Pressable style={{ padding: 4 }}>
+          <Ionicons name="ellipsis-vertical" size={24} color={Colors.forest} />
+        </Pressable>
+      </View>
+
+      {/* Cover + Title */}
+      <View style={{ flexDirection: "row", paddingHorizontal: 20, marginBottom: 24, gap: 16, alignItems: "flex-start" }}>
+        <View style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 }}>
+          <BookCover
+            title={book.title}
+            author={book.author}
+            isbn={book.isbn}
+            coverImageUrl={book.coverImageUrl}
+            className="w-[120px] aspect-[2/3]"
+          />
+        </View>
+        <View style={{ flex: 1, paddingTop: 4 }}>
+          <Text style={{ fontFamily: Fonts!.serifBold, fontSize: 22, color: Colors.forest, lineHeight: 30, marginBottom: 8 }}>
+            {book.title}
+          </Text>
+          <Text style={{ fontFamily: Fonts!.sans, fontSize: 15, color: Colors.slate }}>
+            {book.author}
+          </Text>
+        </View>
+      </View>
+
+      {/* Stats Row */}
+      <View style={{ marginHorizontal: 20, backgroundColor: Colors.white, borderRadius: 16, padding: 16, flexDirection: "row", justifyContent: "space-around", marginBottom: 24, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
+        <StatItem icon="bookmark-outline" value={String(totalHighlightCount)} label={totalHighlightCount === 1 ? "Highlight" : "Highlights"} />
+        <View style={{ width: 1, backgroundColor: Colors.border }} />
+        <StatItem icon="document-text-outline" value="0" label="Notes" />
+        {publishYear && (
+          <>
+            <View style={{ width: 1, backgroundColor: Colors.border }} />
+            <StatItem icon="calendar-outline" value={String(publishYear)} label="Published" />
+          </>
+        )}
+      </View>
+
+      {/* About */}
+      {book.description ? (
+        <View style={{ marginHorizontal: 20, marginBottom: 24 }}>
+          <Text style={{ fontFamily: Fonts!.serifBold, fontSize: 18, color: Colors.forest, marginBottom: 10 }}>
+            About the book
+          </Text>
+          <Text
+            style={{ fontFamily: Fonts!.sans, fontSize: 15, color: Colors.slate, lineHeight: 24 }}
+            numberOfLines={showFullDescription ? undefined : 4}
+          >
+            {book.description}
+          </Text>
+          {isLongDescription && (
+            <Pressable onPress={() => setShowFullDescription(!showFullDescription)} style={{ marginTop: 8, flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Text style={{ fontFamily: Fonts!.sansBold, fontSize: 14, color: Colors.forest }}>
+                {showFullDescription ? "Show less" : "Show more"}
+              </Text>
+              <Ionicons name={showFullDescription ? "chevron-up" : "chevron-down"} size={16} color={Colors.forest} />
+            </Pressable>
+          )}
+        </View>
+      ) : null}
+
+      {/* Divider + Section header */}
+      <View style={{ height: 1, backgroundColor: Colors.border, marginHorizontal: 20, marginBottom: 20 }} />
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 16 }}>
+        <Text style={{ fontFamily: Fonts!.serifBold, fontSize: 18, color: Colors.forest }}>
+          Your Highlights
+        </Text>
+        {totalHighlightCount > 0 && (
+          <Text style={{ fontFamily: Fonts!.sans, fontSize: 13, color: Colors.slate }}>
+            {totalHighlightCount} total
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+
+  // ─── Empty state ───────────────────────────────────────────────────────────
+
+  const EmptyHighlights = (
+    <View style={{ marginHorizontal: 20, backgroundColor: Colors.white, borderRadius: 16, padding: 32, alignItems: "center" }}>
+      <Ionicons name="bookmark-outline" size={40} color={Colors.mist} style={{ marginBottom: 12 }} />
+      <Text style={{ fontFamily: Fonts!.serifBold, fontSize: 17, color: Colors.forest, marginBottom: 6 }}>
+        No highlights yet
+      </Text>
+      <Text style={{ fontFamily: Fonts!.sans, fontSize: 14, color: Colors.slate, textAlign: "center" }}>
+        Highlights you import from this book will appear here.
+      </Text>
+    </View>
+  );
+
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        bounces={false}
+    <View style={{ flex: 1, backgroundColor: Colors.cream }}>
+      <FlatList
+        data={highlights}
+        keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
-      >
-        {/* ── Top colored hero ── */}
-        <View style={[styles.topBackground, { paddingTop: Math.max(insets.top, 20) }]}>
-          <ImageBackground
-            source={require("../../../assets/fox/fox-bg.png")}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-          >
-            <View style={styles.imageOverlay} />
-          </ImageBackground>
-
-          {/* Header */}
-          <View style={styles.header}>
-            <Pressable onPress={() => router.back()} style={styles.iconButton}>
-              <Ionicons name="chevron-back" size={28} color={Colors.white} />
-            </Pressable>
-          </View>
-
-          {/* Book Cover */}
-          <View style={styles.coverWrapper}>
-            <View style={[styles.cover, { backgroundColor: bgColor }]}>
-              <View style={styles.spine} />
-              <Text style={styles.coverTitle} numberOfLines={4}>{book.title}</Text>
-              <Text style={styles.coverAuthor} numberOfLines={2}>{book.author}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Bottom white sheet ── */}
-        <View style={styles.bottomSheet}>
-          <View style={styles.contentContainer}>
-            <Text style={styles.bookTitle}>{book.title}</Text>
-            <Text style={styles.bookAuthor}>By {book.author}</Text>
-
-            <Text style={styles.highlightCount}>
-              {highlights.length} highlight{highlights.length !== 1 ? "s" : ""}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.4}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 80) }}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={highlightsLoading ? null : EmptyHighlights}
+        ListFooterComponent={
+          highlightsLoading ? (
+            <ActivityIndicator size="small" color={Colors.forest} style={{ marginVertical: 20 }} />
+          ) : !hasMore && highlights.length > 0 ? (
+            <Text style={{ fontFamily: Fonts!.sans, fontSize: 13, color: Colors.slate, textAlign: "center", marginVertical: 24 }}>
+              All {totalHighlightCount} highlights loaded
             </Text>
-
-            {/* ── Highlights ── */}
-            <View style={styles.highlightsSection}>
-              <Text style={styles.sectionTitle}>Your Highlights</Text>
-
-              {highlights.length === 0 ? (
-                <EmptyState
-                  icon="bookmark-outline"
-                  title="No highlights yet"
-                  message="Highlights you import from this book will appear here."
-                />
-              ) : (
-                <View style={styles.highlightsList}>
-                  {highlights.map((h) => (
-                    <HighlightCard
-                      key={h.id}
-                      quote={h.highlight_text}
-                      bookTitle={book.title}
-                      author={book.author}
-                      page={h.page_number ?? undefined}
-                      note={h.note ?? undefined}
-                    />
-                  ))}
-                </View>
-              )}
+          ) : null
+        }
+        renderItem={({ item }) => {
+          const hwb: HighlightWithBook = {
+            id: item.id,
+            bookId: book.id,
+            userId: "",
+            highlightText: item.highlightText,
+            pageNumber: item.pageNumber,
+            location: item.location,
+            createdAt: item.createdAt,
+            embedding: null,
+            embeddingModel: null,
+            lastSurfacedAt: null,
+            book: {
+              id: book.id,
+              userId: "",
+              title: book.title,
+              author: book.author,
+              isbn: book.isbn ?? null,
+              coverImageUrl: book.coverImageUrl ?? null,
+              description: book.description ?? null,
+              publisher: book.publisher ?? null,
+              publishDate: book.publishDate ?? null,
+              enrichmentStatus: "pending",
+              createdAt: "",
+              updatedAt: "",
+            },
+          };
+          return (
+            <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+              <HighlightCard highlight={hwb} />
             </View>
-          </View>
-        </View>
-      </ScrollView>
+          );
+        }}
+      />
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Stat Item ────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.white,
-  },
-  topBackground: {
-    alignItems: "center",
-    paddingBottom: 80,
-    overflow: "hidden",
-    backgroundColor: Colors.forest,
-  },
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.6)",
-  },
-  header: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.s16,
-    marginBottom: Spacing.s20,
-    zIndex: 10,
-  },
-  iconButton: {
-    padding: Spacing.s8,
-  },
-  coverWrapper: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-    zIndex: 5,
-    marginBottom: -100,
-  },
-  cover: {
-    width: 180,
-    aspectRatio: 2 / 3,
-    borderRadius: 12,
-    justifyContent: "flex-end",
-    padding: Spacing.s16,
-    overflow: "hidden",
-  },
-  spine: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 14,
-    backgroundColor: "rgba(0,0,0,0.2)",
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
-  },
-  coverTitle: {
-    fontFamily: Fonts.serifBold,
-    fontSize: 18,
-    color: "rgba(255,255,255,0.95)",
-    lineHeight: 24,
-    marginBottom: 6,
-  },
-  coverAuthor: {
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-    color: "rgba(255,255,255,0.7)",
-  },
-  bottomSheet: {
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    paddingTop: 120,
-    paddingHorizontal: Spacing.s24,
-    flex: 1,
-  },
-  contentContainer: {
-    maxWidth: 600,
-    alignSelf: "center",
-    width: "100%",
-  },
-  bookTitle: {
-    fontFamily: Fonts.serifBold,
-    fontSize: 28,
-    color: Colors.forest,
-    marginBottom: Spacing.s8,
-  },
-  bookAuthor: {
-    fontFamily: Fonts.sans,
-    fontSize: 16,
-    color: Colors.slate,
-    marginBottom: Spacing.s8,
-  },
-  highlightCount: {
-    fontFamily: Fonts.sans,
-    fontSize: 13,
-    color: Colors.slate,
-    marginBottom: Spacing.s24,
-    opacity: 0.7,
-  },
-  highlightsSection: {
-    marginTop: Spacing.s8,
-  },
-  sectionTitle: {
-    fontFamily: Fonts.serifBold,
-    fontSize: 20,
-    color: Colors.forest,
-    marginBottom: Spacing.s16,
-  },
-  highlightsList: {
-    gap: Spacing.s16,
-  },
-});
+function StatItem({ icon, value, label }: { icon: keyof typeof Ionicons.glyphMap; value: string; label: string }) {
+  return (
+    <View style={{ alignItems: "center", flex: 1 }}>
+      <Ionicons name={icon} size={22} color={Colors.forest} style={{ marginBottom: 6 }} />
+      <Text style={{ fontFamily: Fonts!.serifBold, fontSize: 18, color: Colors.forest, marginBottom: 2 }}>
+        {value}
+      </Text>
+      <Text style={{ fontFamily: Fonts!.sans, fontSize: 12, color: Colors.slate }}>
+        {label}
+      </Text>
+    </View>
+  );
+}

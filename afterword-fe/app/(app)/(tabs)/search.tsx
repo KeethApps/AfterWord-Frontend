@@ -288,7 +288,7 @@ export default function SearchScreen() {
 
   return (
     <ScreenContainer padded={false}>
-      <AppHeader title="What do you want to revisit?" />
+      <AppHeader title="Search" />
       <View className="px-4 flex-1">
         <SearchBar
           value={query}

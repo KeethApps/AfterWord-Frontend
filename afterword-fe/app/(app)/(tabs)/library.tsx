@@ -114,7 +114,7 @@ export default function LibraryScreen() {
   };
 
   return (
-    <ScreenContainer padded={false}>
+    <ScreenContainer padded={false} scrollable={false}>
       <AppHeader title="My Library" />
       
       <View className="px-4 flex-1">

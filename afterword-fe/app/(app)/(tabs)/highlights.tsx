@@ -8,6 +8,7 @@ import {
   Easing,
   ActivityIndicator,
   FlatList,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
@@ -147,6 +148,7 @@ export default function HighlightsScreen() {
   
   // UI State
   const [activeTab, setActiveTab] = useState("All");
+  const [activeSort, setActiveSort] = useState("Most Recent");
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
@@ -164,8 +166,6 @@ export default function HighlightsScreen() {
       const from = currentPage * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      // We'd add real filters (notes, books) to the DB query if our schema fully supported it natively.
-      // For now, we mimic it for the UI.
       let dbQuery = supabase.from("highlights").select('*', { count: "exact", head: true }).eq('user_id', session.user.id);
       
       let dataQuery = supabase.from("highlights")
@@ -184,8 +184,19 @@ export default function HighlightsScreen() {
           )
         `)
         .eq('user_id', session.user.id)
-        .order("created_at", { ascending: false })
         .range(from, to);
+
+      if (activeSort === "Oldest") {
+        dataQuery = dataQuery.order("created_at", { ascending: true });
+      } else if (activeSort === "Book (A-Z)") {
+        // Fallback to sorting by created_at since foreign table sorting is complex in simple queries,
+        // but we'll try to order by books.title if supported.
+        dataQuery = dataQuery.order("books(title)", { ascending: true } as any);
+      } else if (activeSort === "Book (Z-A)") {
+        dataQuery = dataQuery.order("books(title)", { ascending: false } as any);
+      } else {
+        dataQuery = dataQuery.order("created_at", { ascending: false });
+      }
 
       if (query) {
         dbQuery = dbQuery.ilike('highlight_text', `%${query}%`);
@@ -229,7 +240,7 @@ export default function HighlightsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [query, activeTab]);
+  }, [query, activeTab, activeSort]);
 
   useEffect(() => {
     fetchHighlights(page);
@@ -237,27 +248,13 @@ export default function HighlightsScreen() {
 
   useEffect(() => {
     setPage(0);
-  }, [query, activeTab]);
+  }, [query, activeTab, activeSort]);
 
   function goToPage(p: number) {
     setPage(p);
   }
 
   // ── Render ────────────────────────────────────────────────────────
-
-  if (isFiltersOpen) {
-    return (
-      <ScreenContainer padded={false}>
-        <AppHeader title="Highlights" />
-        <View className="px-4 flex-1">
-          <HighlightsFilterSheet 
-            onClearAll={() => {}} 
-            onApplyFilters={() => setIsFiltersOpen(false)} 
-          />
-        </View>
-      </ScreenContainer>
-    );
-  }
 
   return (
     <ScreenContainer padded={false} scrollable={false}>
@@ -272,8 +269,8 @@ export default function HighlightsScreen() {
           className="mb-4"
         />
 
-        <View className="flex-row items-center justify-between mb-6">
-          <View className="flex-row gap-2">
+        <View className="flex-row items-center justify-between mb-4">
+          <View className="flex-row mr-2 gap-2">
             {TABS.map((tab) => (
               <Pressable
                 key={tab}
@@ -289,7 +286,7 @@ export default function HighlightsScreen() {
         </View>
 
         {!loading && totalCount > 0 && (
-          <Text className="font-sans text-xs text-slate mb-4">
+          <Text className="font-sans text-sm text-slate mb-4">
             {totalCount.toLocaleString()} highlight{totalCount !== 1 ? "s" : ""}
           </Text>
         )}
@@ -347,6 +344,29 @@ export default function HighlightsScreen() {
           />
         )}
       </View>
+
+      <Modal
+        visible={isFiltersOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsFiltersOpen(false)}
+      >
+        <View className="flex-1 bg-black/40 justify-end">
+          <Pressable className="flex-1" onPress={() => setIsFiltersOpen(false)} />
+          <HighlightsFilterSheet 
+            currentSort={activeSort}
+            onClearAll={() => {
+              setActiveSort("Most Recent");
+              setIsFiltersOpen(false);
+            }} 
+            onApplyFilters={(sort) => {
+              setActiveSort(sort);
+              setIsFiltersOpen(false);
+            }} 
+            onClose={() => setIsFiltersOpen(false)}
+          />
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }

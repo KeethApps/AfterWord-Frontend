@@ -23,7 +23,7 @@ export default function AppLayout() {
   return (
     <Stack screenOptions={{ headerShown: false, animation: "fade", contentStyle: { backgroundColor: Colors.cream } }}>
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="book" />
+      <Stack.Screen name="book/[id]" />
       <Stack.Screen name="profile" />
       <Stack.Screen name="settings" />
     </Stack>
