@@ -260,7 +260,7 @@ export default function HighlightsScreen() {
   }
 
   return (
-    <ScreenContainer padded={false}>
+    <ScreenContainer padded={false} scrollable={false}>
       <AppHeader title="Highlights" />
 
       <View className="px-4 flex-1">

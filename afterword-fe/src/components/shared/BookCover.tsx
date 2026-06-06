@@ -20,16 +20,18 @@ export const BookCover = ({ coverImageUrl, isbn, title, author, className = '' }
 
   if (imageUrl) {
     return (
-      <Image
-        source={{ uri: imageUrl }}
-        className={`w-[120px] h-[180px] rounded-md border border-border ${className}`}
-        contentFit="cover"
-      />
+      <View className={`rounded-md border border-border overflow-hidden ${className || 'w-[120px] h-[180px]'}`}>
+        <Image
+          source={{ uri: imageUrl }}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="cover"
+        />
+      </View>
     );
   }
 
   return (
-    <View className={`w-[120px] h-[180px] rounded-md border border-border bg-mist p-3 justify-between overflow-hidden ${className}`}>
+    <View className={`rounded-md border border-border bg-mist p-3 justify-between overflow-hidden ${className || 'w-[120px] h-[180px]'}`}>
       <Text 
         className="font-serifBold text-forest text-sm leading-snug"
         numberOfLines={4}

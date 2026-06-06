@@ -8,6 +8,7 @@ interface BookGridCardProps {
   author: string;
   isbn?: string | null;
   coverImageUrl?: string | null;
+  highlightsCount?: number;
   onPress: () => void;
   width?: number | string;
 }
@@ -17,13 +18,14 @@ export const BookGridCard: React.FC<BookGridCardProps> = ({
   author,
   isbn,
   coverImageUrl,
+  highlightsCount = 0,
   onPress,
 }) => {
   return (
     <Pressable
       onPress={onPress}
-      className="mb-6 flex-1"
-      style={({ pressed }) => [pressed && { opacity: 0.75 }, { maxWidth: '30%' }]}
+      className="mb-6 w-[31%]"
+      style={({ pressed }) => pressed && { opacity: 0.75 }}
     >
       <View className="shadow-sm items-center mb-3 w-full">
         <BookCover 
@@ -35,11 +37,14 @@ export const BookGridCard: React.FC<BookGridCardProps> = ({
         />
       </View>
       
-      <Text className="font-serifBold text-base text-forest mb-1 leading-snug" numberOfLines={2}>
+      <Text className="font-serifBold text-sm text-forest mb-1 leading-snug" numberOfLines={2}>
         {title}
       </Text>
-      <Text className="font-sans text-xs text-slate" numberOfLines={1}>
+      <Text className="font-sans text-xs text-slate mb-1" numberOfLines={1}>
         {author}
+      </Text>
+      <Text className="font-sans text-[10px] text-forest opacity-80" numberOfLines={1}>
+        {highlightsCount} {highlightsCount === 1 ? 'highlight' : 'highlights'}
       </Text>
     </Pressable>
   );

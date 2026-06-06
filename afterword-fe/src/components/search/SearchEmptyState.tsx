@@ -3,43 +3,55 @@ import { View, Text, Pressable } from "react-native";
 import { EmptyState } from "../../components/EmptyState";
 import { Colors } from "../../../constants/theme";
 
+import { FolioFox } from "../../components/FolioFox";
+
 interface SearchEmptyStateProps {
   onSuggestionPress: (suggestion: string) => void;
+  children?: React.ReactNode;
 }
 
-export const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ onSuggestionPress }) => {
+export const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ onSuggestionPress, children }) => {
   const suggestions = [
-    "habits", "mindset", "productivity",
-    "discipline", "leadership", "focus"
+    "linguistics", "social", "amaze", "Gandalf",
   ];
 
   return (
-    <View className="flex-1 mt-12">
-      <EmptyState
-        title="What are you looking for?"
-        description="Search by keyword, topic, book, author, or even an idea."
-        foxVariant="telescope"
-      >
-        <View className="w-full px-4 mt-8">
-          <Text className="font-sansBold text-sm text-forest mb-4 text-center">
-            Try searching for
-          </Text>
-          <View className="flex-row flex-wrap justify-center gap-2">
-            {suggestions.map((suggestion) => (
-              <Pressable
-                key={suggestion}
-                onPress={() => onSuggestionPress(suggestion)}
-                className="px-4 py-2 bg-white border border-mist rounded-full"
-                style={({ pressed }) => pressed && { opacity: 0.7 }}
-              >
-                <Text className="font-sans text-sm text-forest">
-                  {suggestion}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+    <View className="flex-1 mt-4">
+      <View className="px-2 mb-8">
+        <Text className="font-sansBold text-xs text-slate uppercase tracking-widest mb-4">
+          TRY SEARCHING
+        </Text>
+        <View className="flex-row flex-wrap gap-2">
+          {suggestions.map((suggestion) => (
+            <Pressable
+              key={suggestion}
+              onPress={() => onSuggestionPress(suggestion)}
+              className="px-4 py-2 bg-white border border-mist rounded-full"
+              style={({ pressed }) => pressed && { opacity: 0.7 }}
+            >
+              <Text className="font-sans text-sm text-forest">
+                {suggestion}
+              </Text>
+            </Pressable>
+          ))}
         </View>
-      </EmptyState>
+      </View>
+
+      {children}
+
+      <View className="mt-8 bg-cream p-6 rounded-3xl items-center justify-between mb-6">
+        <View className="mr-4">
+          <FolioFox size={80} variant="books" />
+        </View>
+        <View className="">
+          <Text className="font-serifBold text-lg text-forest mb-1">
+            Search your second brain.
+          </Text>
+          <Text className="font-sans text-sm text-slate">
+            Every highlight is a thought worth revisiting.
+          </Text>
+        </View>
+      </View>
     </View>
   );
 };

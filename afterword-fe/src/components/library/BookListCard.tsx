@@ -34,7 +34,7 @@ export const BookListCard: React.FC<BookListCardProps> = ({
           author={author} 
           isbn={isbn} 
           coverImageUrl={coverImageUrl} 
-          className="w-full h-[108px]" 
+          className="w-full aspect-[2/3]" 
         />
       </View>
       

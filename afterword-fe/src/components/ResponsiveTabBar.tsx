@@ -98,12 +98,33 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
 
   // Floating Pill Bottom Tab Bar for small screens (Mobile)
   return (
-    <View style={[styles.bottomBarContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-      <View style={styles.pillBar}>
+    <View style={styles.bottomBarContainer}>
+      <View style={[styles.pillBar, { height: 64 + insets.bottom, paddingBottom: insets.bottom }]}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const label = options.title !== undefined ? options.title : route.name;
           const isFocused = state.index === index;
+          const isCenter = route.name === 'search';
+          
+          if (isCenter) {
+            return (
+              <Pressable
+                key={route.key}
+                onPress={() => handlePress(route, isFocused)}
+                style={styles.pillItem}
+              >
+                <View style={styles.centerButtonContainer}>
+                  <View style={[styles.floatingCircle, isFocused && styles.floatingCircleActive]}>
+                    <Ionicons 
+                      name={getIconName(route.name, isFocused)} 
+                      size={28} 
+                      color={Colors.white} 
+                    />
+                  </View>
+                </View>
+              </Pressable>
+            );
+          }
           
           return (
             <Pressable
@@ -111,27 +132,14 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
               onPress={() => handlePress(route, isFocused)}
               style={styles.pillItem}
             >
-              {isFocused ? (
-                <View style={styles.activeIconContainer}>
-                  <View style={styles.floatingCircle}>
-                    <Ionicons 
-                      name={getIconName(route.name, isFocused)} 
-                      size={24} 
-                      color={Colors.white} 
-                    />
-                  </View>
-                  <Text style={styles.activeLabel}>{label}</Text>
-                </View>
-              ) : (
-                <View style={styles.inactiveIconContainer}>
-                  <Ionicons 
-                    name={getIconName(route.name, isFocused)} 
-                    size={24} 
-                    color={Colors.slate} 
-                  />
-                  <Text style={styles.inactiveLabel}>{label}</Text>
-                </View>
-              )}
+              <View style={styles.standardIconContainer}>
+                <Ionicons 
+                  name={getIconName(route.name, isFocused)} 
+                  size={24} 
+                  color={isFocused ? '#1c1c1c' : Colors.slate} 
+                />
+                <Text style={[styles.standardLabel, isFocused && styles.activeText]}>{label}</Text>
+              </View>
             </Pressable>
           );
         })}
@@ -254,22 +262,21 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: 'transparent',
     alignItems: 'center',
-    paddingHorizontal: 20,
     pointerEvents: 'box-none',
   },
   pillBar: {
     flexDirection: 'row',
-    backgroundColor: '#f5f1e8', // Dark pill background from image
-    borderRadius: 40,
-    height: 72,
+    backgroundColor: '#FFFFFF', 
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: 64,
     width: '100%',
-    maxWidth: 400,
     alignItems: 'center',
     justifyContent: 'space-around',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05, 
+    shadowRadius: 10,
     elevation: 8,
     paddingHorizontal: 8,
   },
@@ -279,44 +286,49 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: '100%',
   },
-  inactiveIconContainer: {
+  standardIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: 4,
   },
-  inactiveLabel: {
+  standardLabel: {
     fontFamily: Fonts.sans,
     fontSize: 10,
     color: Colors.slate,
     marginTop: 4,
   },
-  activeIconContainer: {
+  activeText: {
+    color: '#1c1c1c',
+    fontFamily: Fonts.sansBold,
+  },
+  centerButtonContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
     height: '100%',
+    width: 60,
   },
   floatingCircle: {
     position: 'absolute',
-    top: -18, // Break out of the pill
+    top: -24,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#1E3A34', // Prominent purple/blue from image
+    backgroundColor: '#353344', // Dark brand purple/slate
     alignItems: 'center',
     justifyContent: 'center',
-    // shadowColor: '#1c1c1c',
-    // shadowOffset: { width: 0, height: 4 },
-    // shadowOpacity: 0.4,
-    // shadowRadius: 8,
-    elevation: 3,
+    elevation: 4,
     borderWidth: 4,
-    borderColor: Colors.cream, // To give a cutout effect against background
+    borderColor: '#FFFFFF', // Matches the white pill background
   },
-  activeLabel: {
+  floatingCircleActive: {
+    backgroundColor: '#2A2836', // Slightly darker brand purple when active
+  },
+  centerLabel: {
     fontFamily: Fonts.sansBold,
     fontSize: 10,
-    color: '#1c1c1c',
+    color: Colors.slate,
     position: 'absolute',
-    bottom: 12, // Position text below the floating circle
+    bottom: 8,
   }
 });

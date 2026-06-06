@@ -27,7 +27,7 @@ import { supabase } from "../../../lib/supabase";
 import { useSearchBooks } from "../../../hooks/queries/books";
 
 const RECENT_SEARCHES_KEY = "@afterword_recent_searches";
-const TABS = ["All", "Quotes", "Books", "Authors"];
+const TABS = ["Quotes", "Ideas", "Books", "Authors", "Topics"];
 
 interface QuoteResult {
   highlight_text: string;
@@ -48,9 +48,7 @@ export default function SearchScreen() {
   // State
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("All");
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [activeContentType, setActiveContentType] = useState("All");
+  const [activeTab, setActiveTab] = useState("Quotes");
   
   // Data State
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -143,7 +141,7 @@ export default function SearchScreen() {
               key={tab}
               onPress={() => setActiveTab(tab)}
               className={`px-4 py-2 rounded-full mr-2 ${
-                isActive ? "bg-forest" : "bg-mist"
+                isActive ? "bg-forest" : "bg-white border border-mist"
               }`}
             >
               <Text className={`font-sans text-sm ${isActive ? "text-white" : "text-forest"}`}>
@@ -160,9 +158,9 @@ export default function SearchScreen() {
     if (recentSearches.length === 0) return null;
     return (
       <View className="mt-4 px-2">
-        <Text className="font-sansBold text-sm text-slate mb-4">Recent searches</Text>
+        <Text className="font-sansBold text-xs text-slate uppercase tracking-widest mb-4">RECENT SEARCHES</Text>
         {recentSearches.map((term) => (
-          <View key={term} className="flex-row items-center justify-between py-3 border-b border-mist">
+          <View key={term} className="flex-row items-center justify-between py-3">
             <Pressable 
               className="flex-row items-center flex-1"
               onPress={() => setQuery(term)}
@@ -180,27 +178,14 @@ export default function SearchScreen() {
   };
 
   const renderBody = () => {
-    if (isFiltersOpen) {
-      return (
-        <SearchFilterSheet
-          activeContentType={activeContentType}
-          onContentTypeChange={setActiveContentType}
-          onClearAll={() => setActiveContentType("All")}
-          onApplyFilters={() => setIsFiltersOpen(false)}
-        />
-      );
-    }
-
     if (!query) {
-      if (recentSearches.length > 0) {
-        return (
-          <ScrollView showsVerticalScrollIndicator={false} className="flex-1 mt-4">
-            <SearchEmptyState onSuggestionPress={handleSuggestionPress} />
-            {renderRecentSearches()}
-          </ScrollView>
-        );
-      }
-      return <SearchEmptyState onSuggestionPress={handleSuggestionPress} />;
+      return (
+        <ScrollView showsVerticalScrollIndicator={false} className="flex-1 mt-4">
+          <SearchEmptyState onSuggestionPress={handleSuggestionPress}>
+            {recentSearches.length > 0 && renderRecentSearches()}
+          </SearchEmptyState>
+        </ScrollView>
+      );
     }
 
     if (isTyping || isLoading) {
@@ -230,9 +215,9 @@ export default function SearchScreen() {
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1" contentContainerStyle={{ paddingBottom: 60 }}>
         {renderTabs()}
 
-        {(activeTab === "All" || activeTab === "Quotes") && quoteResults.length > 0 && (
+        {activeTab === "Quotes" && quoteResults.length > 0 && (
           <View className="mb-6 mt-4">
-            {activeTab === "All" && <Text className="font-sansBold text-xs text-slate uppercase tracking-wider mb-4">Top result</Text>}
+            <Text className="font-sansBold text-xs text-slate uppercase tracking-wider mb-4">Top result</Text>
             <TopResultCard
               quote={quoteResults[0].highlight_text}
               bookTitle={quoteResults[0].book.title}
@@ -244,9 +229,9 @@ export default function SearchScreen() {
           </View>
         )}
 
-        {(activeTab === "All" || activeTab === "Books") && bookResults.length > 0 && (
+        {activeTab === "Books" && bookResults.length > 0 && (
           <View className="mb-6">
-            {activeTab === "All" && <Text className="font-sansBold text-xs text-slate uppercase tracking-wider mb-4">Books ({bookResults.length})</Text>}
+            <Text className="font-sansBold text-xs text-slate uppercase tracking-wider mb-4">Books ({bookResults.length})</Text>
             {bookResults.map((book) => (
               <BookResultRow
                 key={book.id}
@@ -260,9 +245,9 @@ export default function SearchScreen() {
           </View>
         )}
 
-        {(activeTab === "All" || activeTab === "Quotes") && quoteResults.length > 1 && (
+        {activeTab === "Quotes" && quoteResults.length > 1 && (
           <View className="mb-6">
-            {activeTab === "All" && <Text className="font-sansBold text-xs text-slate uppercase tracking-wider mb-4">More Quotes</Text>}
+            <Text className="font-sansBold text-xs text-slate uppercase tracking-wider mb-4">More Quotes</Text>
             {quoteResults.slice(1).map((r, i) => (
               <View key={i} className="mb-4">
                 <HighlightCard
@@ -303,13 +288,13 @@ export default function SearchScreen() {
 
   return (
     <ScreenContainer padded={false}>
-      <AppHeader title="Search" />
+      <AppHeader title="What do you want to revisit?" />
       <View className="px-4 flex-1">
         <SearchBar
           value={query}
           onChangeText={setQuery}
-          placeholder="Search quotes, books, authors..."
-          onFilterPress={() => setIsFiltersOpen(!isFiltersOpen)}
+          placeholder="Search quotes, books, authors, topics..."
+          rightIcon="mic-outline"
           className="mb-2"
         />
         {renderBody()}

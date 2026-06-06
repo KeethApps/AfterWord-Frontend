@@ -8,6 +8,8 @@ export interface SearchBarProps extends Omit<TextInputProps, 'onChangeText'> {
   onChangeText: (text: string) => void;
   onClear?: () => void;
   onFilterPress?: () => void;
+  rightIcon?: keyof typeof Ionicons.glyphMap;
+  onRightIconPress?: () => void;
   className?: string;
 }
 
@@ -20,14 +22,16 @@ export const SearchBar = ({
   onChangeText,
   onClear,
   onFilterPress,
+  rightIcon,
+  onRightIconPress,
   className = '',
   placeholder = 'Search...',
   ...rest
 }: SearchBarProps) => {
   return (
     <View className={`flex-row items-center gap-x-2 mt-5 ${className}`}>
-      <View className="flex-1 flex-row items-center bg-white rounded-full px-4 py-3 border border-border">
-        <Ionicons name="search" size={20} color={Colors.slate} />
+      <View className="flex-1 flex-row items-center bg-white rounded-full px-4 py-1 border border-border">
+        <Ionicons name="search" size={18} color={Colors.slate} />
         
         <TextInput
           className="flex-1 font-sans text-base text-forest ml-2"
@@ -44,6 +48,12 @@ export const SearchBar = ({
             onClear?.();
           }} className="ml-2 p-1">
             <Ionicons name="close-circle" size={20} color={Colors.slate} />
+          </Pressable>
+        )}
+
+        {rightIcon && value.length === 0 && (
+          <Pressable onPress={onRightIconPress} className="ml-2 p-1">
+            <Ionicons name={rightIcon} size={20} color={Colors.slate} />
           </Pressable>
         )}
       </View>

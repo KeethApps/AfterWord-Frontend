@@ -35,6 +35,7 @@ export type FolioFoxVariant =
 const foxVariants: Record<FolioFoxVariant, ImageSourcePropType> = {
 reading: require("../../assets/fox/fox-reading.png"),
 waving: require("../../assets/fox/fox-books.png"),
+books: require("../../assets/fox/fox-books.png"),
 sleeping: require("../../assets/fox/fox-reading.png"),
 thinking: require("../../assets/fox/fox-reading.png"),
 happy: require("../../assets/fox/fox-reading.png"),
