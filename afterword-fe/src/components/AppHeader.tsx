@@ -60,7 +60,7 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
             ]}
           >
             <Image
-              source={require("../../assets/crane/crane-icon.jpg")}
+              source={require("../../assets/crane/crane-icon.png")}
               style={styles.avatarImage}
             />
           </Pressable>
@@ -168,8 +168,8 @@ const styles = StyleSheet.create({
   },
 
   avatarImage: {
-    width: 52,
-    height: 52,
+    width: 50,
+    height: 50,
     borderRadius: 999,
 
     borderWidth: 1,

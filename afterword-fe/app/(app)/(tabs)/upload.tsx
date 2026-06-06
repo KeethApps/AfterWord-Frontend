@@ -12,7 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import { router } from "expo-router";
-import { Button, FolioFox } from "../../../src/components";
+import { FolioFox } from "@/src/components/FolioFox";
+import { Button } from "../../../src/components";
 import { AppHeader } from "../../../src/components/AppHeader";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { ScreenContainer } from "../../../src/components/ScreenContainer";
@@ -561,7 +562,7 @@ export default function UploadScreen() {
               </Pressable>
 
               <View style={styles.comingSoonBlock}>
-                <FolioFox size={120} variant="thinking" style={{ marginBottom: 24 }} />
+                <FolioFox size={120} variant="laptop" style={{ marginBottom: 24 }} />
                 <Text style={styles.comingSoonTitle}>Feature Coming Soon</Text>
                 <Text style={styles.comingSoonSubtitle}>
                   We're working hard to support {selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)} imports.

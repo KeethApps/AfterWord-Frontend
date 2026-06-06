@@ -95,7 +95,11 @@ export const GreetingHeader: React.FC<GreetingHeaderProps> = ({
 
   return (
     <View style={styles.container}>
+
       <View style={styles.row}>
+        <View style={styles.foxWrap}>
+          <FolioFox variant={foxVariant} size={120} />
+          </View>
         {/* Left: greeting text */}
         <View style={styles.textBlock}>
           <Text style={styles.greeting}>{getGreeting(hour)},</Text>
@@ -130,10 +134,6 @@ export const GreetingHeader: React.FC<GreetingHeaderProps> = ({
           </Animated.Text>
         </View>
 
-        {/* Right: fox */}
-        <View style={styles.foxWrap}>
-          <FolioFox variant={foxVariant} size={120} />
-        </View>
       </View>
     </View>
   );
@@ -178,6 +178,7 @@ const styles = StyleSheet.create({
   foxWrap: {
     alignItems: "center",
     justifyContent: "center",
+    marginRight: Spacing.s16,
   },
   skeleton: {
     height: 40,
