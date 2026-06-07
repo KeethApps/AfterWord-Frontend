@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   Pressable,
   ActivityIndicator,
   ScrollView,
@@ -15,6 +14,7 @@ import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { AppHeader } from "../../../src/components/AppHeader";
 import { HighlightCard } from "../../../src/components/shared/HighlightCard";
 import { ScreenContainer } from "../../../src/components/common/ScreenContainer";
+import { FilterPills } from "../../../src/components/common/FilterPills";
 import { SearchBar } from "../../../src/components/shared/SearchBar";
 import {
   SearchEmptyState,
@@ -27,7 +27,6 @@ import { supabase } from "../../../lib/supabase";
 import { useSearchBooks } from "../../../hooks/queries/books";
 
 const RECENT_SEARCHES_KEY = "@afterword_recent_searches";
-// const TABS = ["Quotes", "Ideas", "Books", "Authors", "Topics"];
 
 interface QuoteResult {
   highlight_text: string;
@@ -131,28 +130,6 @@ export default function SearchScreen() {
 
   // ── Render Helpers ───────────────────────────────────────────────────────
 
-  const renderTabs = () => (
-    <View className="mb-4">
-      {/* <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <Pressable
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-full mr-2 ${
-                isActive ? "bg-forest" : "bg-white border border-mist"
-              }`}
-            >
-              <Text className={`font-sans text-sm ${isActive ? "text-white" : "text-forest"}`}>
-                {tab}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView> */}
-    </View>
-  );
 
   const renderRecentSearches = () => {
     if (recentSearches.length === 0) return null;
@@ -213,7 +190,6 @@ export default function SearchScreen() {
     // Results View
     return (
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1" contentContainerStyle={{ paddingBottom: 60 }}>
-        {renderTabs()}
 
         {activeTab === "Quotes" && quoteResults.length > 0 && (
           <View className="mb-6 mt-4">

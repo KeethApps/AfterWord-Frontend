@@ -5,40 +5,30 @@ import {
   Pressable,
   StyleSheet,
   Share,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
-import { useHighlights } from "../../../hooks/queries/highlights";
+import { useDailyHighlight } from "@/hooks/queries/useDailyHighlight";
 
 export const DailyHighlightCard: React.FC = () => {
-  const { data: highlights, isLoading } = useHighlights();
+  const { highlight, loading, error, refresh } = useDailyHighlight();
 
-  if (isLoading) return null;
+  if (loading) {
+    return (
+      <View style={[styles.card, styles.cardCenter]}>
+        <ActivityIndicator size="small" color={Colors.forest} />
+      </View>
+    );
+  }
 
-  const latest = highlights?.[0] || {
-    id: "mock-1",
-    bookId: "mock-book-1",
-    userId: "mock-user-1",
-    highlightText:
-      "He'd left home only a week ago, but he felt like he'd aged years, and could present himself now as a young man and not a boy.",
-    createdAt: new Date().toISOString(),
-    book: {
-      id: "mock-book-1",
-      userId: "mock-user-1",
-      title: "Babel",
-      author: "R. F. Kuang",
-      enrichmentStatus: "completed",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  };
-
-  if (!latest) return null;
+  // Surface errors silently — don't break the home screen
+  if (error || !highlight) return null;
 
   async function handleShare() {
     try {
       await Share.share({
-        message: `"${latest.highlightText}"\n\n— ${latest.book?.title}, ${latest.book?.author}`,
+        message: `"${highlight!.highlight_text}"\n\n— ${highlight!.book.title}, ${highlight!.book.author}`,
       });
     } catch {}
   }
@@ -53,13 +43,22 @@ export const DailyHighlightCard: React.FC = () => {
         <View style={styles.header}>
           <Ionicons name="book" size={14} color={Colors.forest} />
           <Text style={styles.headerLabel}>Today's Highlight</Text>
+          <Pressable
+            onPress={refresh}
+            style={({ pressed }) => [
+              styles.refreshBtn,
+              pressed && { opacity: 0.5 },
+            ]}
+          >
+            <Ionicons name="refresh-outline" size={14} color={Colors.slate} />
+          </Pressable>
         </View>
 
         {/* Quote */}
         <View style={styles.quoteRow}>
           <Text style={styles.openQuote}>"</Text>
           <Text style={styles.quoteText}>
-            {latest.highlightText}
+            {highlight.highlight_text}
             <Text style={styles.closeQuote}> "</Text>
           </Text>
         </View>
@@ -67,8 +66,8 @@ export const DailyHighlightCard: React.FC = () => {
         {/* Footer: book info + share button */}
         <View style={styles.footer}>
           <View style={styles.bookInfo}>
-            <Text style={styles.bookTitle}>{latest.book?.title}</Text>
-            <Text style={styles.bookAuthor}>{latest.book?.author}</Text>
+            <Text style={styles.bookTitle}>{highlight.book.title}</Text>
+            <Text style={styles.bookAuthor}>{highlight.book.author}</Text>
           </View>
           <Pressable
             onPress={handleShare}
@@ -94,7 +93,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.s24,
     elevation: 2,
   },
-  // The dark green left border accent
+  cardCenter: {
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: 120,
+  },
   accentBar: {
     width: 5,
     backgroundColor: Colors.forest,
@@ -116,6 +119,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.forest,
     fontWeight: "500",
+    flex: 1,
+  },
+  refreshBtn: {
+    padding: 2,
   },
   quoteRow: {
     flexDirection: "row",
@@ -143,7 +150,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: Colors.forest,
     opacity: 0.85,
-    // inline so it sits at the end of the last line
   },
   footer: {
     flexDirection: "row",

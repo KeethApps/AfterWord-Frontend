@@ -16,6 +16,7 @@ import { AppHeader } from "../../../src/components/AppHeader";
 import { HighlightCard } from "../../../src/components/shared/HighlightCard";
 import { SearchBar } from "../../../src/components/shared/SearchBar";
 import { ScreenContainer } from "../../../src/components/common/ScreenContainer";
+import { FilterPills } from "../../../src/components/common/FilterPills";
 import { supabase } from "../../../lib/supabase";
 import {
   HighlightsEmptyState, 
@@ -24,7 +25,12 @@ import {
 import { Pagination } from "@/src/components/shared/Pagination";
 
 const PAGE_SIZE = 10;
-const TABS = ["All", "Notes", "Books"];
+
+const HIGHLIGHT_TABS = [
+  { label: "All", value: "All" },
+  { label: "Notes", value: "Notes" },
+  { label: "Books", value: "Books" },
+];
 
 type Highlight = {
   id: string;
@@ -203,20 +209,12 @@ export default function HighlightsScreen() {
           className="mb-4"
         />
 
-        <View className="flex-row items-center justify-between mb-4">
-          <View className="flex-row mr-2 gap-2">
-            {TABS.map((tab) => (
-              <Pressable
-                key={tab}
-                onPress={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-full ${activeTab === tab ? "bg-forest" : "bg-white border border-mist"}`}
-              >
-                <Text className={`font-sans text-xs ${activeTab === tab ? "text-white" : "text-forest"}`}>
-                  {tab}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+        <View className="flex-row items-center mb-4">
+          <FilterPills
+            options={HIGHLIGHT_TABS}
+            activeValue={activeTab}
+            onSelect={setActiveTab}
+          />
         </View>
 
         {!loading && totalCount > 0 && (

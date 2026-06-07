@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   View,
   Text,
-  ScrollView,
   Pressable,
   ActivityIndicator,
   FlatList,
@@ -11,6 +10,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { ScreenContainer } from "../../../src/components/common/ScreenContainer";
+import { FilterPills } from "../../../src/components/common/FilterPills";
 import { AppHeader } from "../../../src/components/AppHeader";
 import { SearchBar } from "../../../src/components/shared/SearchBar";
 import {
@@ -103,21 +103,12 @@ export default function LibraryScreen() {
     return null;
   };
 
-  const renderTab = (label: string, value: TabType) => {
-    const isActive = activeTab === value;
-    return (
-      <Pressable
-        onPress={() => setActiveTab(value)}
-        className={`px-4 py-2 rounded-full mr-2 ${
-          isActive ? "bg-forest" : "bg-white border border-mist"
-        }`}
-      >
-        <Text className={`font-sans text-sm ${isActive ? "text-white" : "text-forest"}`}>
-          {label}
-        </Text>
-      </Pressable>
-    );
-  };
+
+  const LIBRARY_TABS = [
+    { label: "All Books", value: "all" as TabType },
+    { label: "Recently Read", value: "recent" as TabType },
+    { label: "Most Highlighted", value: "highlighted" as TabType },
+  ];
 
   const isEmpty = displayBooks.length === 0 || isLoading;
 
@@ -134,13 +125,13 @@ export default function LibraryScreen() {
         />
 
         {/* Tabs Row & View Toggle */}
-        <View className="mb-4 flex-row items-center">
-          <View className="flex-1 mr-2">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {renderTab("All Books", "all")}
-              {renderTab("Recently Read", "recent")}
-              {renderTab("Most Highlighted", "highlighted")}
-            </ScrollView>
+        <View className="mb-4 flex-row items-center gap-2">
+          <View className="flex-1">
+            <FilterPills
+              options={LIBRARY_TABS}
+              activeValue={activeTab}
+              onSelect={setActiveTab}
+            />
           </View>
           <Pressable
             onPress={() => setViewMode(viewMode === "list" ? "grid" : "list")}

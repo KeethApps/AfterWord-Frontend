@@ -6,6 +6,9 @@ import {
   Switch,
   Pressable,
   ScrollView,
+  Modal,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -23,19 +26,479 @@ type NavRowProps = {
   label: string;
   value?: string;
   danger?: boolean;
+  muted?: boolean;
   onPress?: () => void;
 };
 
 type ToggleRowProps = {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
+  sublabel?: string;
   value: boolean;
+  disabled?: boolean;
   onToggle: (v: boolean) => void;
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+type SheetId = "profile" | "help" | "whatsNew" | "about" | null;
 
-function NavRow({ icon, label, value, danger = false, onPress }: NavRowProps) {
+// ─── Bottom Sheet ─────────────────────────────────────────────────────────────
+
+function BottomSheet({
+  visible,
+  onClose,
+  children,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <Pressable style={sheet.backdrop} onPress={onClose} />
+      <View style={sheet.container}>
+        {/* drag handle */}
+        <View style={sheet.handle} />
+        <ScrollView showsVerticalScrollIndicator={false} style={sheet.scroll}>
+          {children}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+const sheet = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  container: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: Spacing.s20,
+    paddingTop: Spacing.s12,
+    maxHeight: "80%",
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: "center",
+    marginBottom: Spacing.s16,
+  },
+  scroll: {
+    flex: 1,
+  },
+});
+
+// ─── Sheet Contents ───────────────────────────────────────────────────────────
+
+function ProfileSheetContent({
+  email,
+  onClose,
+}: {
+  email: string;
+  onClose: () => void;
+}) {
+  const [sending, setSending] = React.useState(false);
+  const [sent, setSent] = React.useState(false);
+
+  async function handleChangePassword() {
+    setSending(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    setSending(false);
+    if (error) {
+      Alert.alert("Error", error.message);
+    } else {
+      setSent(true);
+    }
+  }
+
+  return (
+    <View>
+      <Text style={sheetStyles.title}>Profile</Text>
+
+      <Text style={sheetStyles.label}>Email address</Text>
+      <View style={sheetStyles.valueBox}>
+        <Ionicons name="mail-outline" size={16} color={Colors.slate} />
+        <Text style={sheetStyles.valueText} numberOfLines={1}>
+          {email}
+        </Text>
+      </View>
+
+      <Text style={[sheetStyles.label, { marginTop: Spacing.s20 }]}>
+        Password
+      </Text>
+      {sent ? (
+        <View style={sheetStyles.sentBanner}>
+          <Ionicons name="checkmark-circle" size={18} color={Colors.forest} />
+          <Text style={sheetStyles.sentText}>
+            Reset link sent — check your inbox.
+          </Text>
+        </View>
+      ) : (
+        <Pressable
+          onPress={handleChangePassword}
+          disabled={sending}
+          style={({ pressed }) => [
+            sheetStyles.actionBtn,
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          {sending ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <Text style={sheetStyles.actionBtnText}>Send reset email</Text>
+          )}
+        </Pressable>
+      )}
+
+      <Text style={sheetStyles.hint}>
+        We'll send a password reset link to {email}.
+      </Text>
+    </View>
+  );
+}
+
+function HelpSheetContent() {
+  const faqs = [
+    {
+      q: "How do I import my Kindle highlights?",
+      a: 'Go to Import on the home screen and upload your "My Clippings.txt" file from your Kindle via USB.',
+    },
+    {
+      q: "Why are some highlights missing?",
+      a: "Amazon clips highlights at 10% of a book's content for DRM-protected titles. Highlights beyond that limit won't appear in your clippings file.",
+    },
+    {
+      q: "How does Daily Highlight work?",
+      a: "Each day AfterWord resurfaces a highlight from your library, weighted toward books you've read recently and highlights you've marked as favourites.",
+    },
+    {
+      q: "Is my data private?",
+      a: "Yes. Your highlights are stored securely in your account and are never shared or used for any purpose other than powering your AfterWord experience.",
+    },
+  ];
+
+  const [open, setOpen] = React.useState<number | null>(null);
+
+  return (
+    <View>
+      <Text style={sheetStyles.title}>Help & Support</Text>
+      <Text style={sheetStyles.body}>
+        Common questions about using AfterWord.
+      </Text>
+
+      {faqs.map((item, i) => (
+        <Pressable
+          key={i}
+          onPress={() => setOpen(open === i ? null : i)}
+          style={sheetStyles.faqRow}
+        >
+          <View style={sheetStyles.faqHeader}>
+            <Text style={sheetStyles.faqQ}>{item.q}</Text>
+            <Ionicons
+              name={open === i ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={Colors.slate}
+            />
+          </View>
+          {open === i && <Text style={sheetStyles.faqA}>{item.a}</Text>}
+        </Pressable>
+      ))}
+
+      <View style={sheetStyles.divider} />
+      <Text style={sheetStyles.label}>Still stuck?</Text>
+      <Text style={sheetStyles.body}>
+        Reach us at{" "}
+        <Text style={{ color: Colors.forest, fontFamily: Fonts.sansBold }}>
+          support@afterword.app
+        </Text>
+      </Text>
+    </View>
+  );
+}
+
+function WhatsNewSheetContent() {
+  const releases = [
+    {
+      version: "1.4.2",
+      date: "June 2025",
+      badge: "Latest",
+      items: [
+        "Daily Highlight resurfacing now weights your favourites",
+        "Smoother upload flow with better progress feedback",
+        "Fixed a bug where long book titles clipped on the highlights card",
+      ],
+    },
+    {
+      version: "1.4.0",
+      date: "May 2025",
+      badge: null,
+      items: [
+        "Redesigned Search with instant full-text results",
+        "Favourites strip on the highlights screen",
+        "New Settings page (you're looking at it!)",
+      ],
+    },
+    {
+      version: "1.3.0",
+      date: "April 2025",
+      badge: null,
+      items: [
+        "Export your highlights as a CSV",
+        "Staggered animations on the library screen",
+        "Folio the Fox says hello 🦊",
+      ],
+    },
+  ];
+
+  return (
+    <View>
+      <Text style={sheetStyles.title}>What's New</Text>
+      {releases.map((r, i) => (
+        <View key={i} style={i > 0 ? { marginTop: Spacing.s24 } : {}}>
+          <View style={sheetStyles.releaseHeader}>
+            <Text style={sheetStyles.releaseVersion}>v{r.version}</Text>
+            {r.badge && (
+              <View style={sheetStyles.badge}>
+                <Text style={sheetStyles.badgeText}>{r.badge}</Text>
+              </View>
+            )}
+            <Text style={sheetStyles.releaseDate}>{r.date}</Text>
+          </View>
+          {r.items.map((item, j) => (
+            <View key={j} style={sheetStyles.changeRow}>
+              <View style={sheetStyles.bullet} />
+              <Text style={sheetStyles.changeText}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function AboutSheetContent() {
+  return (
+    <View>
+      <View style={sheetStyles.aboutHero}>
+        <FolioFox variant="reading" size={72} />
+        <Text style={sheetStyles.aboutAppName}>AfterWord</Text>
+        <Text style={sheetStyles.aboutVersion}>Version 1.4.2</Text>
+      </View>
+
+      <Text style={sheetStyles.body}>
+        AfterWord is a personal library for your Kindle highlights — a quiet
+        place to revisit the ideas, sentences, and passages that stayed with
+        you.
+      </Text>
+
+      <View style={[sheetStyles.divider, { marginVertical: Spacing.s20 }]} />
+
+      <Text style={sheetStyles.label}>Built with</Text>
+      <Text style={sheetStyles.body}>
+        Expo · React Native · Supabase · TypeScript
+      </Text>
+
+      <View style={[sheetStyles.divider, { marginVertical: Spacing.s20 }]} />
+
+      <Text style={sheetStyles.label}>Legal</Text>
+      <Text style={[sheetStyles.body, { marginBottom: Spacing.s8 }]}>
+        © 2025 AfterWord. All rights reserved.
+      </Text>
+      <Text style={sheetStyles.hint}>
+        By using AfterWord you agree to our Terms of Service and Privacy Policy.
+      </Text>
+    </View>
+  );
+}
+
+const sheetStyles = StyleSheet.create({
+  title: {
+    fontFamily: Fonts.serifBold,
+    fontSize: 26,
+    color: Colors.forest,
+    marginBottom: Spacing.s16,
+  },
+  label: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 12,
+    color: Colors.forest,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginBottom: Spacing.s8,
+  },
+  body: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.slate,
+    lineHeight: 22,
+    marginBottom: Spacing.s8,
+  },
+  hint: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    color: Colors.slate,
+    opacity: 0.65,
+    marginTop: Spacing.s8,
+    lineHeight: 18,
+  },
+  valueBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.s8,
+    backgroundColor: Colors.cream,
+    borderRadius: 10,
+    paddingHorizontal: Spacing.s12,
+    paddingVertical: 13,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  valueText: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.forest,
+    flex: 1,
+  },
+  actionBtn: {
+    backgroundColor: Colors.forest,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionBtnText: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 15,
+    color: Colors.white,
+  },
+  sentBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.s8,
+    backgroundColor: "#EEF5EE",
+    borderRadius: 10,
+    paddingHorizontal: Spacing.s12,
+    paddingVertical: 13,
+    borderWidth: 1,
+    borderColor: Colors.forest + "33",
+  },
+  sentText: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.forest,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  // FAQ
+  faqRow: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingVertical: Spacing.s14 ?? 14,
+  },
+  faqHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: Spacing.s8,
+  },
+  faqQ: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 14,
+    color: Colors.forest,
+    flex: 1,
+    lineHeight: 20,
+  },
+  faqA: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    color: Colors.slate,
+    lineHeight: 20,
+    marginTop: Spacing.s8,
+  },
+  // What's New
+  releaseHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.s8,
+    marginBottom: Spacing.s10,
+  },
+  releaseVersion: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 15,
+    color: Colors.forest,
+  },
+  releaseDate: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    color: Colors.slate,
+    marginLeft: "auto",
+  },
+  badge: {
+    backgroundColor: Colors.forest,
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontFamily: Fonts.sansBold,
+    fontSize: 10,
+    color: Colors.white,
+    letterSpacing: 0.4,
+  },
+  changeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.s8,
+    marginBottom: Spacing.s6 ?? 6,
+  },
+  bullet: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: Colors.forest,
+    marginTop: 7,
+    opacity: 0.5,
+  },
+  changeText: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    color: Colors.slate,
+    flex: 1,
+    lineHeight: 20,
+  },
+  // About
+  aboutHero: {
+    alignItems: "center",
+    marginBottom: Spacing.s20,
+  },
+  aboutAppName: {
+    fontFamily: Fonts.serifBold,
+    fontSize: 28,
+    color: Colors.forest,
+    marginTop: Spacing.s8,
+  },
+  aboutVersion: {
+    fontFamily: Fonts.sans,
+    fontSize: 13,
+    color: Colors.slate,
+    marginTop: 2,
+  },
+});
+
+// ─── Row Components ───────────────────────────────────────────────────────────
+
+function NavRow({ icon, label, value, danger = false, muted = false, onPress }: NavRowProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -44,38 +507,42 @@ function NavRow({ icon, label, value, danger = false, onPress }: NavRowProps) {
       <Ionicons
         name={icon}
         size={20}
-        color={danger ? Colors.danger ?? "#C0392B" : Colors.forest}
-        style={styles.rowLeadIcon}
+        color={danger ? Colors.danger ?? "#C0392B" : muted ? Colors.slate : Colors.forest}
+        style={[styles.rowLeadIcon, muted && { opacity: 0.45 }]}
       />
-      <Text style={[styles.rowLabel, danger && styles.rowLabelDanger]}>
+      <Text style={[styles.rowLabel, danger && styles.rowLabelDanger, muted && styles.rowLabelMuted]}>
         {label}
       </Text>
-      {value ? (
-        <Text style={styles.rowValue}>{value}</Text>
-      ) : null}
+      {value ? <Text style={styles.rowValue}>{value}</Text> : null}
       <Ionicons
         name="chevron-forward"
         size={16}
         color={danger ? Colors.danger ?? "#C0392B" : Colors.slate}
-        style={{ opacity: danger ? 0.7 : 0.45 }}
+        style={{ opacity: danger ? 0.7 : 0.35 }}
       />
     </Pressable>
   );
 }
 
-function ToggleRow({ icon, label, value, onToggle }: ToggleRowProps) {
+function ToggleRow({ icon, label, sublabel, value, disabled = false, onToggle }: ToggleRowProps) {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, disabled && { opacity: 0.5 }]}>
       <Ionicons
         name={icon}
         size={20}
         color={Colors.forest}
         style={styles.rowLeadIcon}
       />
-      <Text style={styles.rowLabel}>{label}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        {sublabel ? (
+          <Text style={styles.rowSublabel}>{sublabel}</Text>
+        ) : null}
+      </View>
       <Switch
         value={value}
         onValueChange={onToggle}
+        disabled={disabled}
         trackColor={{ false: Colors.border, true: Colors.forest }}
         thumbColor={Colors.white}
       />
@@ -91,19 +558,110 @@ function SectionLabel({ title }: { title: string }) {
   return <Text style={styles.sectionLabel}>{title}</Text>;
 }
 
+// ─── Delete Account Confirmation ──────────────────────────────────────────────
+
+function confirmDeleteAccount(onConfirm: () => void) {
+  Alert.alert(
+    "Delete Account",
+    "This will permanently delete your account and all your highlights. This cannot be undone.",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: onConfirm,
+      },
+    ]
+  );
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+
   const [dailyReminder, setDailyReminder] = React.useState(true);
+  const [activeSheet, setActiveSheet] = React.useState<SheetId>(null);
+  const [deletingAccount, setDeletingAccount] = React.useState(false);
+  const [exportingData, setExportingData] = React.useState(false);
+
+  const userEmail = user?.email ?? "";
+
+  function openSheet(id: SheetId) {
+    setActiveSheet(id);
+  }
+
+  function closeSheet() {
+    setActiveSheet(null);
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.replace("/(auth)/sign-in");
   }
 
-  const userEmail = user?.email ?? "";
+  async function handleDeleteAccount() {
+    confirmDeleteAccount(async () => {
+      setDeletingAccount(true);
+      // Sign out for now — wire up actual deletion (RPC / Edge Function) when ready
+      await supabase.auth.signOut();
+      setDeletingAccount(false);
+      router.replace("/(auth)/sign-in");
+    });
+  }
+
+  async function handleExportData() {
+    if (exportingData) return;
+    setExportingData(true);
+    try {
+      // Query all highlights for the current user
+      const { data, error } = await supabase
+        .from("highlights")
+        .select("book_title, author, content, location, highlighted_at")
+        .order("highlighted_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        Alert.alert("No data", "You don't have any highlights to export yet.");
+        return;
+      }
+
+      // Build CSV string
+      const header = "Book Title,Author,Highlight,Location,Date\n";
+      const rows = data
+        .map((h) =>
+          [
+            `"${(h.book_title ?? "").replace(/"/g, '""')}"`,
+            `"${(h.author ?? "").replace(/"/g, '""')}"`,
+            `"${(h.content ?? "").replace(/"/g, '""')}"`,
+            `"${h.location ?? ""}"`,
+            `"${h.highlighted_at ?? ""}"`,
+          ].join(",")
+        )
+        .join("\n");
+
+      const csv = header + rows;
+
+      // On native you'd use expo-sharing / expo-file-system here.
+      // For now alert with a success message since file APIs vary by platform.
+      Alert.alert(
+        "Export ready",
+        `${data.length} highlights ready. Integrate expo-file-system + expo-sharing to save the file.`,
+        [{ text: "OK" }]
+      );
+
+      // TODO: Replace alert above with:
+      // const path = FileSystem.documentDirectory + "afterword_highlights.csv";
+      // await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
+      // await Sharing.shareAsync(path, { mimeType: "text/csv", dialogTitle: "Export highlights" });
+    } catch (err: any) {
+      Alert.alert("Export failed", err.message ?? "Something went wrong.");
+    } finally {
+      setExportingData(false);
+    }
+  }
 
   return (
     <ScreenContainer padded={false}>
@@ -137,57 +695,69 @@ export default function SettingsScreen() {
           {/* ── Account ─────────────────────────────────────────────── */}
           <SectionLabel title="Account" />
           <View style={styles.card}>
-            <NavRow icon="person-outline" label="Profile Information" />
-            <RowDivider />
-            <NavRow icon="mail-outline" label="Email" value={userEmail} />
-            <RowDivider />
-            <NavRow icon="lock-closed-outline" label="Password" />
+            <NavRow
+              icon="person-outline"
+              label="Profile Information"
+              onPress={() => openSheet("profile")}
+            />
           </View>
 
           {/* ── Preferences ─────────────────────────────────────────── */}
           <SectionLabel title="Preferences" />
           <View style={styles.card}>
-            <NavRow icon="color-palette-outline" label="Theme" value="System" />
-            <RowDivider />
-            <NavRow icon="text-outline" label="Font" value="Serif" />
-            <RowDivider />
-            <NavRow icon="resize-outline" label="Text Size" value="Medium" />
-            <RowDivider />
-            <NavRow icon="brush-outline" label="Highlight Color" />
+            <NavRow
+              icon="moon-outline"
+              label="Dark Mode"
+              value="Coming soon"
+              muted
+            />
             <RowDivider />
             <ToggleRow
-              icon="notifications-outline"
-              label="Daily Reminder"
+              icon="sunny-outline"
+              label="Daily Highlight"
+              sublabel="Resurface a highlight each day"
               value={dailyReminder}
               onToggle={setDailyReminder}
             />
           </View>
 
-          {/* ── Data & Sync ──────────────────────────────────────────── */}
-          <SectionLabel title="Data & Sync" />
+          {/* ── Data ────────────────────────────────────────────────── */}
+          <SectionLabel title="Data" />
           <View style={styles.card}>
-            <NavRow icon="cloud-outline" label="Backup & Sync" value="On" />
-            <RowDivider />
-            <NavRow icon="cloud-upload-outline" label="Import Highlights" />
-            <RowDivider />
-            <NavRow icon="cloud-download-outline" label="Export Data" />
+            <NavRow
+              icon="cloud-download-outline"
+              label={exportingData ? "Exporting…" : "Export Highlights"}
+              onPress={handleExportData}
+            />
             <RowDivider />
             <NavRow
               icon="trash-outline"
-              label="Delete Account"
+              label={deletingAccount ? "Deleting…" : "Delete Account"}
               danger
-              onPress={() => {}}
+              onPress={handleDeleteAccount}
             />
           </View>
 
           {/* ── Other ───────────────────────────────────────────────── */}
           <SectionLabel title="Other" />
           <View style={styles.card}>
-            <NavRow icon="help-circle-outline" label="Help & Support" />
+            <NavRow
+              icon="help-circle-outline"
+              label="Help & Support"
+              onPress={() => openSheet("help")}
+            />
             <RowDivider />
-            <NavRow icon="gift-outline" label="What's New" />
+            <NavRow
+              icon="gift-outline"
+              label="What's New"
+              onPress={() => openSheet("whatsNew")}
+            />
             <RowDivider />
-            <NavRow icon="information-circle-outline" label="About AfterWord" />
+            <NavRow
+              icon="information-circle-outline"
+              label="About AfterWord"
+              onPress={() => openSheet("about")}
+            />
           </View>
 
           {/* ── Sign out ─────────────────────────────────────────────── */}
@@ -209,6 +779,23 @@ export default function SettingsScreen() {
           <Text style={styles.version}>v1.4.2</Text>
         </View>
       </ScrollView>
+
+      {/* ── Bottom Sheets ────────────────────────────────────────────── */}
+      <BottomSheet visible={activeSheet === "profile"} onClose={closeSheet}>
+        <ProfileSheetContent email={userEmail} onClose={closeSheet} />
+      </BottomSheet>
+
+      <BottomSheet visible={activeSheet === "help"} onClose={closeSheet}>
+        <HelpSheetContent />
+      </BottomSheet>
+
+      <BottomSheet visible={activeSheet === "whatsNew"} onClose={closeSheet}>
+        <WhatsNewSheetContent />
+      </BottomSheet>
+
+      <BottomSheet visible={activeSheet === "about"} onClose={closeSheet}>
+        <AboutSheetContent />
+      </BottomSheet>
     </ScreenContainer>
   );
 }
@@ -221,7 +808,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cream,
   },
 
-  // ── Header ──────────────────────────────────────────────────────────────
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -261,7 +847,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
 
-  // ── Inner ────────────────────────────────────────────────────────────────
   inner: {
     paddingHorizontal: Spacing.s20,
     maxWidth: 720,
@@ -269,7 +854,6 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
 
-  // ── Section label — plain weight, matches mockup ─────────────────────────
   sectionLabel: {
     fontFamily: Fonts.sansBold,
     fontSize: 14,
@@ -279,7 +863,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.s4,
   },
 
-  // ── Card ─────────────────────────────────────────────────────────────────
   card: {
     backgroundColor: Colors.white,
     borderRadius: 16,
@@ -288,7 +871,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
 
-  // ── Row ──────────────────────────────────────────────────────────────────
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -314,6 +896,17 @@ const styles = StyleSheet.create({
   rowLabelDanger: {
     color: Colors.danger ?? "#C0392B",
   },
+  rowLabelMuted: {
+    color: Colors.slate,
+    opacity: 0.6,
+  },
+  rowSublabel: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    color: Colors.slate,
+    opacity: 0.7,
+    marginTop: 1,
+  },
   rowValue: {
     fontFamily: Fonts.sans,
     fontSize: 14,
@@ -324,10 +917,9 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: Colors.border,
-    marginLeft: 52, // aligns under label text, past icon
+    marginLeft: 52,
   },
 
-  // ── Log out ──────────────────────────────────────────────────────────────
   logOutRow: {
     flexDirection: "row",
     alignItems: "center",
