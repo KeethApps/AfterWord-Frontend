@@ -5,6 +5,12 @@ import {
   FlatList,
   Pressable,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  Platform,
+  ActionSheetIOS,
+  Alert,
+  Image,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -56,6 +62,86 @@ export default function BookDetailsScreen() {
   const pageRef = useRef(0);
 
   const [showFullDescription, setShowFullDescription] = useState(false);
+
+  // ─── Match Book State ──────────────────────────────────────────────────────
+  const [isMatchModalVisible, setIsMatchModalVisible] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const openMenu = () => {
+    setIsMenuVisible(true);
+  };
+
+  const handleSearchOpenLibrary = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const q = encodeURIComponent(searchQuery);
+      const res = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=10`);
+      const data = await res.json();
+      setSearchResults(data.docs || []);
+    } catch (err) {
+      Alert.alert("Search Error", "Could not fetch results from Open Library.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleMatchBook = async (doc: any) => {
+    setIsUpdating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No session");
+
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/match-book`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            book_id: id,
+            title: doc.title,
+            author: doc.author_name?.[0],
+            isbn: doc.isbn?.[0],
+            cover_i: doc.cover_i,
+            open_library_key: doc.key,
+            publisher: doc.publisher?.[0],
+            publish_date: doc.first_publish_year?.toString(),
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Update failed");
+      }
+
+      const { book: updatedBook } = await res.json();
+      setBook({
+        id: updatedBook.id,
+        title: updatedBook.title,
+        author: updatedBook.author,
+        isbn: updatedBook.isbn,
+        coverImageUrl: updatedBook.cover_image_url,
+        description: updatedBook.description,
+        publisher: updatedBook.publisher,
+        publishDate: updatedBook.publish_date,
+      });
+
+      setIsMatchModalVisible(false);
+      Alert.alert("Success", "Book info updated successfully.");
+    } catch (err: any) {
+      Alert.alert("Update Error", err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   // ─── Fetch Book ────────────────────────────────────────────────────────────
 
@@ -185,7 +271,7 @@ export default function BookDetailsScreen() {
         <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
           <Ionicons name="chevron-back" size={28} color={Colors.forest} />
         </Pressable>
-        <Pressable style={{ padding: 4 }}>
+        <Pressable style={{ padding: 4 }} onPress={openMenu}>
           <Ionicons name="ellipsis-vertical" size={24} color={Colors.forest} />
         </Pressable>
       </View>
@@ -280,6 +366,97 @@ export default function BookDetailsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.cream }}>
+      {/* ─── Options Menu Modal ─── */}
+      <Modal visible={isMenuVisible} transparent={true} animationType="fade" onRequestClose={() => setIsMenuVisible(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }} onPress={() => setIsMenuVisible(false)}>
+          <View style={{ position: "absolute", top: insets.top + 50, right: 16, backgroundColor: Colors.white, borderRadius: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8, minWidth: 160, overflow: "hidden" }}>
+            <Pressable
+              style={({ pressed }) => ({ padding: 16, backgroundColor: pressed ? Colors.mist : Colors.white })}
+              onPress={() => {
+                setIsMenuVisible(false);
+                setTimeout(() => setIsMatchModalVisible(true), 100);
+              }}
+            >
+              <Text style={{ fontFamily: Fonts!.sansBold, fontSize: 15, color: Colors.forest }}>Match book info</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ─── Match Book Modal ─── */}
+      <Modal visible={isMatchModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setIsMatchModalVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: Colors.cream, paddingTop: Platform.OS === "ios" ? 20 : 0 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border }}>
+            <Text style={{ fontFamily: Fonts!.serifBold, fontSize: 18, color: Colors.forest }}>Match Book Info</Text>
+            <Pressable onPress={() => setIsMatchModalVisible(false)}>
+              <Text style={{ fontFamily: Fonts!.sansBold, color: Colors.forest, fontSize: 16 }}>Cancel</Text>
+            </Pressable>
+          </View>
+          <View style={{ padding: 16, flex: 1 }}>
+            <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
+              <TextInput
+                style={{ flex: 1, backgroundColor: Colors.white, borderRadius: 8, padding: 12, fontFamily: Fonts!.sans, fontSize: 15, borderWidth: 1, borderColor: Colors.border }}
+                placeholder="Search by title, author, or ISBN..."
+                placeholderTextColor={Colors.slate}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearchOpenLibrary}
+                returnKeyType="search"
+                autoCapitalize="none"
+              />
+              <Pressable
+                onPress={handleSearchOpenLibrary}
+                style={{ backgroundColor: Colors.forest, paddingHorizontal: 16, justifyContent: "center", borderRadius: 8 }}
+              >
+                <Text style={{ color: Colors.white, fontFamily: Fonts!.sansBold }}>Search</Text>
+              </Pressable>
+            </View>
+            {isSearching ? (
+              <ActivityIndicator size="large" color={Colors.forest} style={{ marginTop: 24 }} />
+            ) : (
+              <FlatList
+                data={searchResults}
+                keyExtractor={(item, index) => item.key || index.toString()}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => handleMatchBook(item)}
+                    style={{ flexDirection: "row", padding: 12, backgroundColor: Colors.white, borderRadius: 8, marginBottom: 12, opacity: isUpdating ? 0.5 : 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
+                    disabled={isUpdating}
+                  >
+                    {item.cover_i ? (
+                      <Image
+                        source={{ uri: `https://covers.openlibrary.org/b/id/${item.cover_i}-S.jpg` }}
+                        style={{ width: 40, height: 60, borderRadius: 4, backgroundColor: Colors.mist }}
+                      />
+                    ) : (
+                      <View style={{ width: 40, height: 60, borderRadius: 4, backgroundColor: Colors.mist, justifyContent: "center", alignItems: "center" }}>
+                        <Ionicons name="book" size={20} color={Colors.slate} />
+                      </View>
+                    )}
+                    <View style={{ flex: 1, marginLeft: 12, justifyContent: "center" }}>
+                      <Text style={{ fontFamily: Fonts!.serifBold, fontSize: 16, color: Colors.forest }} numberOfLines={2}>{item.title}</Text>
+                      <Text style={{ fontFamily: Fonts!.sans, fontSize: 14, color: Colors.slate }}>{item.author_name?.[0] ?? "Unknown Author"}</Text>
+                    </View>
+                  </Pressable>
+                )}
+                ListEmptyComponent={
+                  searchQuery && !isSearching && searchResults.length === 0 ? (
+                    <Text style={{ textAlign: "center", marginTop: 24, fontFamily: Fonts!.sans, color: Colors.slate }}>No results found.</Text>
+                  ) : null
+                }
+              />
+            )}
+          </View>
+          {isUpdating && (
+            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.7)", justifyContent: "center", alignItems: "center" }}>
+              <ActivityIndicator size="large" color={Colors.forest} />
+              <Text style={{ marginTop: 12, fontFamily: Fonts!.sansBold, color: Colors.forest }}>Updating book...</Text>
+            </View>
+          )}
+        </View>
+      </Modal>
+
       <FlatList
         data={highlights}
         keyExtractor={(item) => item.id}

@@ -560,20 +560,7 @@ function SectionLabel({ title }: { title: string }) {
 
 // ─── Delete Account Confirmation ──────────────────────────────────────────────
 
-function confirmDeleteAccount(onConfirm: () => void) {
-  Alert.alert(
-    "Delete Account",
-    "This will permanently delete your account and all your highlights. This cannot be undone.",
-    [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: onConfirm,
-      },
-    ]
-  );
-}
+// confirmDeleteAccount removed — see handleDeleteAccount / performDeleteAccount below
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -601,14 +588,53 @@ export default function SettingsScreen() {
     router.replace("/(auth)/sign-in");
   }
 
-  async function handleDeleteAccount() {
-    confirmDeleteAccount(async () => {
-      setDeletingAccount(true);
-      // Sign out for now — wire up actual deletion (RPC / Edge Function) when ready
+  // Async work lives here, NOT inside the Alert callback.
+  // Alert.alert's onPress is synchronous — awaiting inside it silently swallows
+  // errors and state updates never fire.
+  async function performDeleteAccount() {
+    setDeletingAccount(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No session");
+
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/delete-account`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error ?? "Delete failed");
+      }
+
       await supabase.auth.signOut();
-      setDeletingAccount(false);
       router.replace("/(auth)/sign-in");
-    });
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Could not delete account");
+    } finally {
+      setDeletingAccount(false);
+    }
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your account and all your highlights. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => { performDeleteAccount(); },
+        },
+      ]
+    );
   }
 
   async function handleExportData() {
