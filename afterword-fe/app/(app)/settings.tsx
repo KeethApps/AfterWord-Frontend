@@ -219,7 +219,7 @@ function HelpSheetContent() {
       <Text style={sheetStyles.body}>
         Reach us at{" "}
         <Text style={{ color: Colors.forest, fontFamily: Fonts.sansBold }}>
-          support@afterword.app
+          getafterword@gmail.com
         </Text>
       </Text>
     </View>
@@ -230,7 +230,7 @@ function WhatsNewSheetContent() {
   const releases = [
     {
       version: "1.4.2",
-      date: "June 2025",
+      date: "June 2026",
       badge: "Latest",
       items: [
         "Daily Highlight resurfacing now weights your favourites",
@@ -240,7 +240,7 @@ function WhatsNewSheetContent() {
     },
     {
       version: "1.4.0",
-      date: "May 2025",
+      date: "May 2026",
       badge: null,
       items: [
         "Redesigned Search with instant full-text results",
@@ -250,7 +250,7 @@ function WhatsNewSheetContent() {
     },
     {
       version: "1.3.0",
-      date: "April 2025",
+      date: "April 2026",
       badge: null,
       items: [
         "Export your highlights as a CSV",
@@ -312,7 +312,7 @@ function AboutSheetContent() {
 
       <Text style={sheetStyles.label}>Legal</Text>
       <Text style={[sheetStyles.body, { marginBottom: Spacing.s8 }]}>
-        © 2025 AfterWord. All rights reserved.
+        © 2026 AfterWord. All rights reserved.
       </Text>
       <Text style={sheetStyles.hint}>
         By using AfterWord you agree to our Terms of Service and Privacy Policy.

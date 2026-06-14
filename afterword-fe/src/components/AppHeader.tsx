@@ -74,27 +74,6 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
                 ]}
                 onPress={() => {
                   setIsDropdownOpen(false);
-                  router.push("/profile");
-                }}
-              >
-                <Ionicons
-                  name="person-outline"
-                  size={18}
-                  color={Colors.forest}
-                />
-
-                <Text style={styles.dropdownText}>
-                  Profile
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [
-                  styles.dropdownItem,
-                  pressed && styles.dropdownItemPressed,
-                ]}
-                onPress={() => {
-                  setIsDropdownOpen(false);
                   router.push("/settings");
                 }}
               >

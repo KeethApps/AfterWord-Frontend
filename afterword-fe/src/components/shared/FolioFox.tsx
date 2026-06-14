@@ -18,7 +18,7 @@ export interface FolioFoxProps {
 export const FolioFox = ({ variant = "happy", size = 200, className = '', style }: FolioFoxProps) => {
   // TODO: Map variants to specific local assets when available.
   // Using the fallback placeholder requested by the user.
-  const source = require('../../../assets/fox/fox-icon.png');
+  const source = require('../../../assets/crane/crane-books.png');
 
   return (
     <View className={`items-center justify-center ${className}`} style={style}>

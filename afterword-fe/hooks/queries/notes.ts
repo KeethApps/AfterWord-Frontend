@@ -26,3 +26,26 @@ export function useNotesByHighlight(highlightId: string) {
     enabled: !!highlightId,
   });
 }
+
+export function useAllNotes() {
+  return useQuery({
+    queryKey: ['notes', 'all'],
+    queryFn: async (): Promise<Note[]> => {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      return data.map((n: any) => ({
+        id: n.id,
+        highlightId: n.highlight_id,
+        userId: n.user_id,
+        content: n.content,
+        createdAt: n.created_at,
+        updatedAt: n.updated_at,
+      }));
+    },
+  });
+}
