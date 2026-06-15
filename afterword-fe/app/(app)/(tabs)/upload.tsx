@@ -434,7 +434,7 @@ export default function UploadScreen() {
           },
           body: JSON.stringify({
             file_path: storagePath,
-            source_type: "KINDLE",
+            source_type: selectedSource === "koreader" ? "KO_READER" : "KINDLE",
           }),
         }
       );
@@ -554,7 +554,7 @@ export default function UploadScreen() {
 )}
 
           {/* ── Coming Soon ───────────────────────────────────────────────── */}
-          {selectedSource && selectedSource !== "kindle" && (
+          {selectedSource && selectedSource !== "kindle" && selectedSource !== "koreader" && (
             <AnimatedPanel stateKey={`coming-soon-${selectedSource}`}>
               <Pressable onPress={() => setSelectedSource(null)} style={styles.backRow}>
                 <Ionicons name="chevron-back" size={20} color={Colors.forest} />
@@ -582,8 +582,8 @@ export default function UploadScreen() {
           )}
 
           {/* ── Kindle Upload Flow ────────────────────────────────────────── */}
-          {selectedSource === "kindle" && (
-            <AnimatedPanel stateKey={`kindle-${state}`}>
+          {(selectedSource === "kindle" || selectedSource === "koreader") && (
+            <AnimatedPanel stateKey={`upload-${selectedSource}-${state}`}>
               {state !== "idle" && (
                 <Pressable onPress={handleReset} style={styles.backRow}>
                   <Ionicons name="chevron-back" size={20} color={Colors.forest} />
