@@ -11,6 +11,15 @@
   --color-crimson:    #D64545;
   --color-border:     #E0D8C8;
   --color-surface:    #FFFFFF;
+
+  /* KnowledgeGraph and brand overrides */
+  --forest: #1E3A2F;
+  --gold: #C9A84C;
+  --slate: #4A7C59;
+  --bg: #F7F5F0;
+  --border: #E8E4DC;
+  --font-display: 'Lora_400Regular', Georgia, serif;
+  --font-body: 'Inter_400Regular', sans-serif;
 }
 
 * {

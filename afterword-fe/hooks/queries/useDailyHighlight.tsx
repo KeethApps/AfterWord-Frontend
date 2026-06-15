@@ -10,6 +10,7 @@ type DailyHighlight = {
     title: string;
     author: string;
     cover_image_url: string | null;
+    isbn: string | null;
   };
 };
 
@@ -43,7 +44,7 @@ export function useDailyHighlight(): UseDailyHighlightResult {
         .from("highlights")
         .select(
           `id, highlight_text, location, last_surfaced_at,
-           book:books(title, author, cover_image_url)`
+           book:books(title, author, cover_image_url, isbn)`
         )
         .or(
           `last_surfaced_at.is.null,last_surfaced_at.lt.${cooloffDate.toISOString()}`
@@ -58,7 +59,7 @@ export function useDailyHighlight(): UseDailyHighlightResult {
           .from("highlights")
           .select(
             `id, highlight_text, location, last_surfaced_at,
-             book:books(title, author, cover_image_url)`
+             book:books(title, author, cover_image_url, isbn)`
           )
           .order("last_surfaced_at", { ascending: true, nullsFirst: true })
           .limit(1)

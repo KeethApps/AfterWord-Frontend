@@ -1,6 +1,6 @@
 import React from "react";
-import { ScrollView, ActivityIndicator, View } from "react-native";
-import { useRouter } from "expo-router";
+import { ScrollView, ActivityIndicator, View, Text } from "react-native";
+import { useRouter, Href } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { ScreenContainer } from "../../../src/components/common/ScreenContainer";
 import { 
@@ -9,7 +9,8 @@ import {
   LibraryStatsRow, 
   RecentlyUploadedRow, 
   HomeEmptyState,
-  HomeSearchBar
+  HomeSearchBar,
+  KnowledgeGraph
 } from "../../../src/components/home";
 import { AppHeader } from "../../../src/components/AppHeader";
 import { useBooks } from "../../../hooks/queries/books";
@@ -40,7 +41,15 @@ export default function HomeScreen() {
           </View>
         ) : hasContent ? (
           <>
-            <DailyHighlightCard/>
+            {/* Two-column layout for Daily Highlight and Knowledge Map on desktop, stacked on mobile */}
+            <View className="flex-col md:flex-row gap-6 mb-6">
+              <View className="flex-1">
+                <DailyHighlightCard />
+              </View>
+
+              <KnowledgeGraph onHighlightSelect={(id) => router.push(`/highlights/${id}` as Href)} />
+            </View>
+
             <LibraryStatsRow
               bookCount={books?.length || 0}
               highlightCount={highlights?.length || 0}
@@ -48,6 +57,7 @@ export default function HomeScreen() {
               authorCount={authorCount}
               onViewAll={() => router.push("/library")}
             />
+            
             <RecentlyUploadedRow />
           </>
         ) : (
