@@ -40,6 +40,7 @@ type HighlightRaw = {
   location: string | null;
   pageNumber: number | null;
   createdAt: string;
+  notes?: { id: string; content: string; created_at: string }[];
 };
 
 const PAGE_SIZE = 15;
@@ -191,7 +192,7 @@ export default function BookDetailsScreen() {
           .eq("book_id", id),
         supabase
           .from("highlights")
-          .select("id, highlight_text, location, page_number, created_at")
+          .select("id, highlight_text, location, page_number, created_at, notes(id, content, created_at)")
           .eq("book_id", id)
           .order("created_at", { ascending: false })
           .range(from, to),
@@ -207,6 +208,7 @@ export default function BookDetailsScreen() {
         location: h.location ?? null,
         pageNumber: h.page_number ?? null,
         createdAt: h.created_at,
+        notes: h.notes ?? [],
       }));
 
       setHighlights((prev) => (page === 0 ? mapped : [...prev, ...mapped]));
@@ -487,6 +489,7 @@ export default function BookDetailsScreen() {
             embedding: null,
             embeddingModel: null,
             lastSurfacedAt: null,
+            notes: item.notes as any,
             book: {
               id: book.id,
               userId: "",

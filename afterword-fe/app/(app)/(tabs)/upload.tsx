@@ -730,33 +730,23 @@ export default function UploadScreen() {
             {state === "processing" && (
               <View style={styles.stateBlock}>
                 <FolioFox size={100} variant="thinking" style={styles.fox} />
-                <SectionLabel title="Processing your highlights" />
-                <View style={styles.card}>
-                  {steps.map((step, i, arr) => (
-                    <React.Fragment key={step.label}>
-                      <StepRow
-                        index={i}
-                        label={step.label}
-                        status={step.status}
-                      />
-                      {i < arr.length - 1 && <View style={styles.divider} />}
-                    </React.Fragment>
-                  ))}
-                </View>
-
-                {uploadProgress > 0 && (
-                  <View style={styles.processingProgress}>
-                    <ProgressBar progress={uploadProgress} />
-                    <Text style={styles.progressLabel}>
-                      {uploadProgress}% processed
-                    </Text>
-                  </View>
-                )}
-
-                <Text style={styles.processingNote}>
-                  You can leave this screen — we'll keep processing in the
-                  background.
+                <Text style={styles.stateTitle}>Highlights are uploading!</Text>
+                <Text style={styles.stateSubtitle}>
+                  We'll keep processing in the background. You can head over to your library, and they'll appear shortly.
                 </Text>
+
+                <View style={styles.actionGroup}>
+                  <Button
+                    label="Go to Library"
+                    onPress={() => router.push("/(app)/(tabs)/library")}
+                    fullWidth
+                  />
+                  <Button
+                    label="Import another file"
+                    variant="ghost"
+                    onPress={handleReset}
+                  />
+                </View>
               </View>
             )}
 

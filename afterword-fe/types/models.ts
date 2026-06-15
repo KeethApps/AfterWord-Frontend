@@ -26,6 +26,7 @@ export interface Highlight {
   embeddingModel?: string | null;
   lastSurfacedAt?: string | null;
   createdAt: string;
+  notes?: Note[] | null;
 }
 
 export interface Note {

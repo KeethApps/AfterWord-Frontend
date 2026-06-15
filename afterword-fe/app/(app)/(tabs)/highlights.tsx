@@ -38,6 +38,7 @@ type Highlight = {
   pageNumber: number | null;
   location: string | null;
   createdAt: string;
+  notes?: { id: string; content: string }[];
   book: {
     id: string;
     title: string;
@@ -115,6 +116,7 @@ export default function HighlightsScreen() {
           page_number,
           location,
           created_at,
+          notes ( id, content ),
           books (
             id,
             title,
@@ -158,6 +160,7 @@ export default function HighlightsScreen() {
           pageNumber: h.page_number ?? null,
           location: h.location ?? null,
           createdAt: h.created_at,
+          notes: h.notes ?? [],
           book: {
             id: h.books?.id ?? "",
             title: h.books?.title ?? "Unknown Book",
@@ -167,10 +170,11 @@ export default function HighlightsScreen() {
           },
         }));
 
-        // Mock empty for "Notes" tab since we don't have notes relation yet
+        // For "Notes" tab, only show highlights that have at least one note
         if (activeTab === "Notes") {
-          setHighlights([]);
-          setTotalCount(0);
+          const withNotes = mapped.filter(h => h.notes && h.notes.length > 0);
+          setHighlights(withNotes);
+          setTotalCount(withNotes.length);
         } else {
           setHighlights(mapped);
         }

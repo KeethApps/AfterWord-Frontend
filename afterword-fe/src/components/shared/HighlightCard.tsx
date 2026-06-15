@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/theme';
 import { Card } from '../common/Card';
@@ -26,11 +26,25 @@ export const HighlightCard = ({ highlight, onShare, className = '' }: HighlightC
     ? `Page ${highlight.pageNumber}` 
     : (highlight.location ? `Loc ${highlight.location}` : '');
 
+  const notes = highlight.notes;
+  const hasNotes = Array.isArray(notes) && notes.length > 0;
+
   return (
     <Card hasAccent className={className}>
       <Text className="font-serif italic text-lg text-forest leading-relaxed mb-4">
         "{highlight.highlightText}"
       </Text>
+
+      {hasNotes && (
+        <View style={styles.notesContainer}>
+          {notes!.map((n: any, idx: number) => (
+            <View key={n.id || idx} style={idx < notes!.length - 1 ? styles.noteRowSeparated : styles.noteRow}>
+              <Text style={styles.noteLabel}>Note</Text>
+              <Text style={styles.noteContent}>{n.content}</Text>
+            </View>
+          ))}
+        </View>
+      )}
       
       <View className="flex-row justify-between items-end">
         <View className="flex-1 mr-4">
@@ -64,3 +78,35 @@ export const HighlightCard = ({ highlight, onShare, className = '' }: HighlightC
     </Card>
   );
 };
+
+const styles = StyleSheet.create({
+  notesContainer: {
+    backgroundColor: Colors.mist,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderLeftWidth: 2,
+    borderLeftColor: Colors.gold,
+  },
+  noteRow: {
+    flexDirection: 'column',
+  },
+  noteRowSeparated: {
+    flexDirection: 'column',
+    marginBottom: 8,
+  },
+  noteLabel: {
+    fontSize: 10,
+    color: Colors.slate,
+    fontFamily: 'Inter_600SemiBold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  noteContent: {
+    fontSize: 14,
+    color: Colors.forest,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 20,
+  },
+});

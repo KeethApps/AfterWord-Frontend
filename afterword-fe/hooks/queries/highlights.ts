@@ -13,7 +13,8 @@ export function useHighlights(filters?: { bookId?: string, hasNotes?: boolean })
         .from('highlights')
         .select(`
           *,
-          books (*)
+          books (*),
+          notes (*)
         `)
         .eq('user_id', session.user.id);
 
@@ -39,6 +40,7 @@ export function useHighlights(filters?: { bookId?: string, hasNotes?: boolean })
         embeddingModel: h.embedding_model,
         lastSurfacedAt: h.last_surfaced_at,
         createdAt: h.created_at,
+        notes: h.notes ?? [],
         book: h.books ? {
           id: h.books.id,
           userId: h.books.user_id,
@@ -64,7 +66,7 @@ export function useHighlightsByBook(bookId: string) {
     queryFn: async (): Promise<Highlight[]> => {
       const { data, error } = await supabase
         .from('highlights')
-        .select('*')
+        .select('*, notes(*)')
         .eq('book_id', bookId)
         .order('created_at', { ascending: false });
 
@@ -81,6 +83,7 @@ export function useHighlightsByBook(bookId: string) {
         embeddingModel: h.embedding_model,
         lastSurfacedAt: h.last_surfaced_at,
         createdAt: h.created_at,
+        notes: h.notes ?? [],
       }));
     },
     enabled: !!bookId,
@@ -95,7 +98,8 @@ export function useSearchHighlights(userId: string, query: string) {
         .from('highlights')
         .select(`
           *,
-          books (*)
+          books (*),
+          notes (*)
         `)
         .eq('user_id', userId)
         .ilike('highlight_text', `%${query}%`)
@@ -114,6 +118,7 @@ export function useSearchHighlights(userId: string, query: string) {
         embeddingModel: h.embedding_model,
         lastSurfacedAt: h.last_surfaced_at,
         createdAt: h.created_at,
+        notes: h.notes ?? [],
         book: h.books ? {
           id: h.books.id,
           userId: h.books.user_id,
