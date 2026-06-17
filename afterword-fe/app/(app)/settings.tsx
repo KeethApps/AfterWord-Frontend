@@ -9,15 +9,23 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Platform,
+  KeyboardAvoidingView,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Colors, Fonts, Spacing } from "../../constants/theme";
 import { ScreenContainer } from "../../src/components/ScreenContainer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
+import { useProfile } from "../../hooks/auth/useProfile";
 import { FolioFox } from "../../src/components/FolioFox";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,23 +67,36 @@ function BottomSheet({
       transparent
       onRequestClose={onClose}
     >
-      <Pressable style={sheet.backdrop} onPress={onClose} />
-      <View style={sheet.container}>
-        {/* drag handle */}
-        <View style={sheet.handle} />
-        <ScrollView showsVerticalScrollIndicator={false} style={sheet.scroll}>
-          {children}
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={sheet.overlay}
+      >
+        <Pressable style={sheet.backdrop} onPress={onClose} />
+        <View style={sheet.container}>
+          {/* drag handle */}
+          <View style={sheet.handle} />
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={sheet.scroll}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const sheet = StyleSheet.create({
-  backdrop: {
+  overlay: {
     flex: 1,
+    justifyContent: "flex-end",
     backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   container: {
     backgroundColor: Colors.white,
@@ -107,8 +128,51 @@ function ProfileSheetContent({
   email: string;
   onClose: () => void;
 }) {
+  const { user } = useAuth();
+  const { profile, isLoading } = useProfile();
+  const queryClient = useQueryClient();
+
+  const [displayName, setDisplayName] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [sent, setSent] = React.useState(false);
+
+  React.useEffect(() => {
+    if (profile?.displayName) {
+      setDisplayName(profile.displayName);
+    }
+  }, [profile]);
+
+  async function handleSaveProfile() {
+    if (!user) return;
+    const trimmedName = displayName.trim();
+    if (!trimmedName) {
+      Alert.alert("Error", "Display name cannot be empty.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: trimmedName,
+        },
+      });
+
+      if (error) {
+        Alert.alert("Error", error.message);
+      } else {
+        // Invalidate profile query to update UI everywhere
+        await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+        Alert.alert("Success", "Profile updated successfully!");
+        onClose();
+      }
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "An unexpected error occurred");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleChangePassword() {
     setSending(true);
@@ -125,7 +189,36 @@ function ProfileSheetContent({
     <View>
       <Text style={sheetStyles.title}>Profile</Text>
 
-      <Text style={sheetStyles.label}>Email address</Text>
+      <Text style={sheetStyles.label}>Display name</Text>
+      {isLoading ? (
+        <ActivityIndicator
+          size="small"
+          color={Colors.forest}
+          style={{ marginVertical: Spacing.s12, alignSelf: "flex-start" }}
+        />
+      ) : (
+        <View style={sheetStyles.inputContainer}>
+          <Ionicons
+            name="person-outline"
+            size={16}
+            color={Colors.slate}
+            style={sheetStyles.inputIcon}
+          />
+          <TextInput
+            style={sheetStyles.input}
+            value={displayName}
+            onChangeText={setDisplayName}
+            placeholder="Enter display name"
+            placeholderTextColor={Colors.slate + "88"}
+            autoCapitalize="words"
+            maxLength={40}
+          />
+        </View>
+      )}
+
+      <Text style={[sheetStyles.label, { marginTop: Spacing.s20 }]}>
+        Email address
+      </Text>
       <View style={sheetStyles.valueBox}>
         <Ionicons name="mail-outline" size={16} color={Colors.slate} />
         <Text style={sheetStyles.valueText} numberOfLines={1}>
@@ -133,9 +226,26 @@ function ProfileSheetContent({
         </Text>
       </View>
 
-      <Text style={[sheetStyles.label, { marginTop: Spacing.s20 }]}>
-        Password
-      </Text>
+      <Pressable
+        onPress={handleSaveProfile}
+        disabled={saving || isLoading}
+        style={({ pressed }) => [
+          sheetStyles.actionBtn,
+          { marginTop: Spacing.s24, backgroundColor: Colors.forest },
+          pressed && { opacity: 0.7 },
+          (saving || isLoading) && { opacity: 0.5 },
+        ]}
+      >
+        {saving ? (
+          <ActivityIndicator size="small" color={Colors.white} />
+        ) : (
+          <Text style={sheetStyles.actionBtnText}>Save Changes</Text>
+        )}
+      </Pressable>
+
+      <View style={[sheetStyles.divider, { marginVertical: Spacing.s24 }]} />
+
+      <Text style={sheetStyles.label}>Password</Text>
       {sent ? (
         <View style={sheetStyles.sentBanner}>
           <Ionicons name="checkmark-circle" size={18} color={Colors.forest} />
@@ -149,6 +259,7 @@ function ProfileSheetContent({
           disabled={sending}
           style={({ pressed }) => [
             sheetStyles.actionBtn,
+            { backgroundColor: Colors.slate },
             pressed && { opacity: 0.7 },
           ]}
         >
@@ -322,6 +433,25 @@ function AboutSheetContent() {
 }
 
 const sheetStyles = StyleSheet.create({
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.cream,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.s12,
+  },
+  inputIcon: {
+    marginRight: Spacing.s8,
+  },
+  input: {
+    flex: 1,
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    color: Colors.forest,
+    paddingVertical: 13,
+  },
   title: {
     fontFamily: Fonts.serifBold,
     fontSize: 26,
@@ -670,18 +800,21 @@ export default function SettingsScreen() {
 
       const csv = header + rows;
 
-      // On native you'd use expo-sharing / expo-file-system here.
-      // For now alert with a success message since file APIs vary by platform.
-      Alert.alert(
-        "Export ready",
-        `${data.length} highlights ready. Integrate expo-file-system + expo-sharing to save the file.`,
-        [{ text: "OK" }]
-      );
-
-      // TODO: Replace alert above with:
-      // const path = FileSystem.documentDirectory + "afterword_highlights.csv";
-      // await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
-      // await Sharing.shareAsync(path, { mimeType: "text/csv", dialogTitle: "Export highlights" });
+      const path = FileSystem.documentDirectory + "afterword_highlights.csv";
+      await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(path, {
+          mimeType: "text/csv",
+          dialogTitle: "Export Highlights",
+          UTI: "public.comma-separated-values-text",
+        });
+      } else {
+        Alert.alert(
+          "Export Ready",
+          "Sharing is not available on this device. CSV generated at: " + path
+        );
+      }
     } catch (err: any) {
       Alert.alert("Export failed", err.message ?? "Something went wrong.");
     } finally {

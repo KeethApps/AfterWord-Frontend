@@ -341,9 +341,9 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
           Knowledge Map
         </Text>
       </View>
-      <Text style={{ fontFamily: Fonts.serifBold, fontSize: 18, color: Colors.forest, lineHeight: 24, marginBottom: 4 }}>
+      {/* <Text style={{ fontFamily: Fonts.serifBold, fontSize: 18, color: Colors.forest, lineHeight: 24, marginBottom: 4 }}>
         How your ideas connect
-      </Text>
+      </Text> */}
       <Text style={{ fontFamily: Fonts.sans, fontSize: 12, color: Colors.slate, lineHeight: 18, marginBottom: 16 }}>
         Tap a node to open its highlight. Drag to pan, pinch to zoom.
       </Text>
