@@ -1,24 +1,39 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions, Platform, Image } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts } from '../../constants/theme';
 import { useLayoutStore } from '../../hooks/useLayoutStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
+import { Linking } from 'react-native';
 
 export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const insets = useSafeAreaInsets();
-  
+  const router = useRouter();
+
   const { isSidebarCollapsed, toggleSidebar } = useLayoutStore();
+
+
+  const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
+
+  // inside the component, alongside your other handlers
+  const handleOpenGuides = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    Linking.openURL('https://getafterword.vercel.app');
+  };
 
   const handlePress = (route: any, isFocused: boolean) => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    
+
     const event = navigation.emit({
       type: 'tabPress',
       target: route.key,
@@ -37,7 +52,6 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
       case 'highlights': return isFocused ? 'bookmarks' : 'bookmarks-outline';
       case 'index': return isFocused ? 'home' : 'home-outline';
       case 'upload': return isFocused ? 'cloud-upload' : 'cloud-upload-outline';
-
       default: return 'ellipse';
     }
   };
@@ -53,7 +67,12 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
             </Pressable>
           ) : (
             <View style={styles.sidebarHeaderRow}>
-              <Text style={styles.logoText}>AfterWord</Text>
+              <Image
+                source={require('../../assets/logo/logo-with-crane.png')}
+                resizeMode="contain"
+                style={{ height: 32, width: 160 }}
+                accessibilityLabel="AfterWord"
+              />
               <Pressable onPress={toggleSidebar} style={styles.collapseToggle}>
                 <Ionicons name="chevron-back" size={24} color={Colors.white} />
               </Pressable>
@@ -77,10 +96,10 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
                   isFocused && styles.sidebarItemActive,
                 ]}
               >
-                <Ionicons 
-                  name={getIconName(route.name, isFocused)} 
-                  size={24} 
-                  color={isFocused ? Colors.gold : Colors.mist} 
+                <Ionicons
+                  name={getIconName(route.name, isFocused)}
+                  size={24}
+                  color={isFocused ? Colors.gold : Colors.mist}
                   style={!isSidebarCollapsed && styles.sidebarIcon}
                 />
                 {!isSidebarCollapsed && (
@@ -92,11 +111,32 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
             );
           })}
         </View>
+
+        {/* Account footer */}
+        <View style={styles.sidebarFooter}>
+          <View style={[styles.userProfile, isSidebarCollapsed && styles.userProfileCollapsed]}>
+            {!isSidebarCollapsed && (
+              <>
+                <View style={styles.userInfo}>
+                  <Text style={styles.userName} numberOfLines={1}>AfterWord Beta</Text>
+                  <Pressable onPress={handleOpenGuides} hitSlop={4}>
+                    <Text style={styles.userMeta} numberOfLines={1}>
+                      v{APP_VERSION} · <Text style={styles.guidesLink}>Learn More ↗</Text>
+                    </Text>
+                  </Pressable>
+                </View>
+                <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
+                  <Ionicons name="settings-outline" size={18} color={Colors.mist} />
+                </Pressable>
+              </>
+            )}
+          </View>
+        </View>
       </View>
     );
   }
 
-  // Floating Pill Bottom Tab Bar for small screens (Mobile)
+  // Floating Pill Bottom Tab Bar for small screens (Mobile) — unchanged
   return (
     <View style={styles.bottomBarContainer}>
       <View style={[styles.pillBar, { height: 64 + insets.bottom, paddingBottom: insets.bottom }]}>
@@ -105,39 +145,23 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
           const label = options.title !== undefined ? options.title : route.name;
           const isFocused = state.index === index;
           const isCenter = route.name === 'search';
-          
+
           if (isCenter) {
             return (
-              <Pressable
-                key={route.key}
-                onPress={() => handlePress(route, isFocused)}
-                style={styles.pillItem}
-              >
+              <Pressable key={route.key} onPress={() => handlePress(route, isFocused)} style={styles.pillItem}>
                 <View style={styles.centerButtonContainer}>
                   <View style={[styles.floatingCircle, isFocused && styles.floatingCircleActive]}>
-                    <Ionicons 
-                      name={getIconName(route.name, isFocused)} 
-                      size={28} 
-                      color={Colors.white} 
-                    />
+                    <Ionicons name={getIconName(route.name, isFocused)} size={28} color={Colors.white} />
                   </View>
                 </View>
               </Pressable>
             );
           }
-          
+
           return (
-            <Pressable
-              key={route.key}
-              onPress={() => handlePress(route, isFocused)}
-              style={styles.pillItem}
-            >
+            <Pressable key={route.key} onPress={() => handlePress(route, isFocused)} style={styles.pillItem}>
               <View style={styles.standardIconContainer}>
-                <Ionicons 
-                  name={getIconName(route.name, isFocused)} 
-                  size={24} 
-                  color={isFocused ? '#1c1c1c' : Colors.slate} 
-                />
+                <Ionicons name={getIconName(route.name, isFocused)} size={24} color={isFocused ? '#1c1c1c' : Colors.slate} />
                 <Text style={[styles.standardLabel, isFocused && styles.activeText]}>{label}</Text>
               </View>
             </Pressable>
@@ -149,7 +173,6 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
 }
 
 const styles = StyleSheet.create({
-  // Sidebar Styles
   sidebar: {
     position: 'absolute',
     left: 0,
@@ -160,7 +183,7 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'column',
     borderRightWidth: 1,
-    borderRightColor: 'rgb(255, 255, 255)',
+    borderRightColor: 'rgba(255, 255, 255, 0.08)', // was solid white — too stark against forest
   },
   sidebarHeader: {
     marginBottom: 40,
@@ -175,11 +198,6 @@ const styles = StyleSheet.create({
   },
   collapseToggle: {
     padding: 14,
-  },
-  logoText: {
-    fontFamily: Fonts.serifBold,
-    fontSize: 24,
-    color: Colors.white,
   },
   sidebarNav: {
     gap: 8,
@@ -215,6 +233,9 @@ const styles = StyleSheet.create({
   sidebarFooter: {
     paddingHorizontal: 16,
     paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    paddingTop: 16,
   },
   userProfile: {
     flexDirection: 'row',
@@ -236,7 +257,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 18,
+    fontSize: 14,
+    fontFamily: Fonts.sansBold,
+    color: Colors.white,
   },
   userInfo: {
     marginLeft: 12,
@@ -254,7 +277,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Pill Bar Styles (Mobile)
+  // Pill Bar Styles (Mobile) — unchanged
   bottomBarContainer: {
     position: 'absolute',
     bottom: 0,
@@ -266,7 +289,7 @@ const styles = StyleSheet.create({
   },
   pillBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: 64,
@@ -275,7 +298,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05, 
+    shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 8,
     paddingHorizontal: 8,
@@ -314,21 +337,26 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#353344', // Dark brand purple/slate
+    backgroundColor: '#353344',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
     borderWidth: 4,
-    borderColor: '#FFFFFF', // Matches the white pill background
+    borderColor: '#FFFFFF',
   },
   floatingCircleActive: {
-    backgroundColor: '#2A2836', // Slightly darker brand purple when active
+    backgroundColor: '#2A2836',
   },
-  centerLabel: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 10,
-    color: Colors.slate,
-    position: 'absolute',
-    bottom: 8,
-  }
+
+  // add to styles
+userMeta: {
+  fontFamily: Fonts.sans,
+  color: Colors.mist,
+  fontSize: 12,
+  marginTop: 2,
+},
+guidesLink: {
+  color: Colors.gold,
+  fontFamily: Fonts.sansBold,
+},
 });

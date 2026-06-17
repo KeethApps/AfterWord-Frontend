@@ -14,6 +14,7 @@ import { Colors, Fonts, Spacing } from "../../../constants/theme";
 
 export type HighlightSource =
   | "kindle"
+  | "koreader"
   | "libby"
   | "kobo"
   | "readwise"
@@ -40,9 +41,15 @@ const SOURCES: Source[] = [
     icon: "phone-portrait-outline",
   },
   {
+    key: "koreader",
+    label: "KOReader",
+    detail: "My Clippings.txt",
+    icon: "reader-outline",
+  },
+  {
     key: "libby",
     label: "Libby",
-    detail: "Exported highlights.txt",
+    detail: "Reading Journey CSV export",
     icon: "library-outline",
   },
   {

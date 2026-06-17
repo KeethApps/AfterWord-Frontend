@@ -11,6 +11,8 @@ import {
   Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../../hooks/useAuth";
+
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { AppHeader } from "../../../src/components/AppHeader";
 import { HighlightCard } from "../../../src/components/shared/HighlightCard";
@@ -23,6 +25,8 @@ import {
   HighlightsFilterSheet 
 } from "../../../src/components/highlights";
 import { Pagination } from "@/src/components/shared/Pagination";
+
+import { Note } from "../../../types";
 
 const PAGE_SIZE = 10;
 
@@ -38,6 +42,7 @@ type Highlight = {
   pageNumber: number | null;
   location: string | null;
   createdAt: string;
+  notes?: Note[];
   book: {
     id: string;
     title: string;
@@ -46,6 +51,7 @@ type Highlight = {
     coverImageUrl?: string | null;
   };
 };
+
 
 function FadeInItem({ index, children }: { index: number; children: React.ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -80,7 +86,9 @@ function FadeInItem({ index, children }: { index: number; children: React.ReactN
 }
 
 export default function HighlightsScreen() {
+  const { user } = useAuth();
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -94,19 +102,22 @@ export default function HighlightsScreen() {
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const fetchHighlights = useCallback(async (currentPage: number) => {
+    if (!user) {
+      setHighlights([]);
+      setTotalCount(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setHighlights([]);
-        setTotalCount(0);
-        return;
-      }
-
       const from = currentPage * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      let dbQuery = supabase.from("highlights").select('*', { count: "exact", head: true }).eq('user_id', session.user.id);
+      const isNotesTab = activeTab === "Notes";
+
+      let dbQuery = supabase.from("highlights")
+        .select(isNotesTab ? 'id, notes!inner(id)' : '*', { count: "exact", head: true })
+        .eq('user_id', user.id);
       
       let dataQuery = supabase.from("highlights")
         .select(`
@@ -115,6 +126,7 @@ export default function HighlightsScreen() {
           page_number,
           location,
           created_at,
+          notes${isNotesTab ? '!inner' : ''} ( id, content, highlight_id, user_id, created_at, updated_at ),
           books (
             id,
             title,
@@ -123,8 +135,11 @@ export default function HighlightsScreen() {
             isbn
           )
         `)
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .range(from, to);
+
+
+
 
       if (activeSort === "Oldest") {
         dataQuery = dataQuery.order("created_at", { ascending: true });
@@ -158,6 +173,14 @@ export default function HighlightsScreen() {
           pageNumber: h.page_number ?? null,
           location: h.location ?? null,
           createdAt: h.created_at,
+          notes: (h.notes ?? []).map((n: any) => ({
+            id: n.id,
+            highlightId: n.highlight_id,
+            userId: n.user_id,
+            content: n.content,
+            createdAt: n.created_at,
+            updatedAt: n.updated_at,
+          })),
           book: {
             id: h.books?.id ?? "",
             title: h.books?.title ?? "Unknown Book",
@@ -167,24 +190,21 @@ export default function HighlightsScreen() {
           },
         }));
 
-        // Mock empty for "Notes" tab since we don't have notes relation yet
-        if (activeTab === "Notes") {
-          setHighlights([]);
-          setTotalCount(0);
-        } else {
-          setHighlights(mapped);
-        }
+        setHighlights(mapped);
       }
     } catch (err) {
       console.error("Highlights error:", err);
     } finally {
       setLoading(false);
     }
-  }, [query, activeTab, activeSort]);
+  }, [query, activeTab, activeSort, user]);
+
 
   useEffect(() => {
+    if (!user) return;
     fetchHighlights(page);
-  }, [page, fetchHighlights]);
+  }, [page, fetchHighlights, user]);
+
 
   useEffect(() => {
     setPage(0);

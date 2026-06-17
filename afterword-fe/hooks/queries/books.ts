@@ -1,18 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { Book } from '../../types';
+import { useAuth } from '../useAuth';
+
 
 export function useBooks() {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useQuery({
-    queryKey: ['books'],
+    queryKey: ['books', userId],
     queryFn: async (): Promise<Book[]> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return [];
+      if (!userId) return [];
 
       const { data, error } = await supabase
         .from('books')
         .select('*')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -33,12 +37,16 @@ export function useBooks() {
         updatedAt: b.updated_at,
       }));
     },
+    enabled: !!userId,
   });
 }
 
 export function useBookById(bookId: string) {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useQuery({
-    queryKey: ['book', bookId],
+    queryKey: ['book', bookId, userId],
     queryFn: async (): Promise<Book> => {
       const { data, error } = await supabase
         .from('books')
@@ -63,21 +71,23 @@ export function useBookById(bookId: string) {
         updatedAt: data.updated_at,
       };
     },
-    enabled: !!bookId,
+    enabled: !!bookId && !!userId,
   });
 }
 
 export function useSearchBooks(query: string) {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useQuery({
-    queryKey: ['books', 'search', query],
+    queryKey: ['books', 'search', query, userId],
     queryFn: async (): Promise<Book[]> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return [];
+      if (!userId) return [];
 
       const { data, error } = await supabase
         .from('books')
         .select('*')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .ilike('title', `%${query}%`)
         .order('created_at', { ascending: false });
 
@@ -98,6 +108,6 @@ export function useSearchBooks(query: string) {
         updatedAt: b.updated_at,
       }));
     },
-    enabled: !!query,
+    enabled: !!query && !!userId,
   });
 }

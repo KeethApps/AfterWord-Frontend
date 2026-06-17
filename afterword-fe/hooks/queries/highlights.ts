@@ -1,21 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { Highlight, HighlightWithBook } from '../../types';
+import { useAuth } from '../useAuth';
+
 
 export function useHighlights(filters?: { bookId?: string, hasNotes?: boolean }) {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useQuery({
-    queryKey: ['highlights', filters],
+    queryKey: ['highlights', userId, filters],
     queryFn: async (): Promise<HighlightWithBook[]> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return [];
+      if (!userId) return [];
 
       let query = supabase
         .from('highlights')
         .select(`
           *,
-          books (*)
+          books (*),
+          notes (*)
         `)
-        .eq('user_id', session.user.id);
+        .eq('user_id', userId);
 
       if (filters?.bookId) {
         query = query.eq('book_id', filters.bookId);
@@ -39,6 +44,7 @@ export function useHighlights(filters?: { bookId?: string, hasNotes?: boolean })
         embeddingModel: h.embedding_model,
         lastSurfacedAt: h.last_surfaced_at,
         createdAt: h.created_at,
+        notes: h.notes ?? [],
         book: h.books ? {
           id: h.books.id,
           userId: h.books.user_id,
@@ -55,16 +61,21 @@ export function useHighlights(filters?: { bookId?: string, hasNotes?: boolean })
         } : null
       }));
     },
+    enabled: !!userId,
   });
 }
 
 export function useHighlightsByBook(bookId: string) {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   return useQuery({
-    queryKey: ['highlights', 'book', bookId],
+    queryKey: ['highlights', 'book', bookId, userId],
     queryFn: async (): Promise<Highlight[]> => {
+      if (!userId) return [];
       const { data, error } = await supabase
         .from('highlights')
-        .select('*')
+        .select('*, notes(*)')
         .eq('book_id', bookId)
         .order('created_at', { ascending: false });
 
@@ -81,9 +92,10 @@ export function useHighlightsByBook(bookId: string) {
         embeddingModel: h.embedding_model,
         lastSurfacedAt: h.last_surfaced_at,
         createdAt: h.created_at,
+        notes: h.notes ?? [],
       }));
     },
-    enabled: !!bookId,
+    enabled: !!bookId && !!userId,
   });
 }
 
@@ -95,7 +107,8 @@ export function useSearchHighlights(userId: string, query: string) {
         .from('highlights')
         .select(`
           *,
-          books (*)
+          books (*),
+          notes (*)
         `)
         .eq('user_id', userId)
         .ilike('highlight_text', `%${query}%`)
@@ -114,6 +127,7 @@ export function useSearchHighlights(userId: string, query: string) {
         embeddingModel: h.embedding_model,
         lastSurfacedAt: h.last_surfaced_at,
         createdAt: h.created_at,
+        notes: h.notes ?? [],
         book: h.books ? {
           id: h.books.id,
           userId: h.books.user_id,
