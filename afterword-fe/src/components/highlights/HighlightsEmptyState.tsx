@@ -18,7 +18,7 @@ export const HighlightsEmptyState: React.FC<HighlightsEmptyStateProps> = ({
         <EmptyState
           title="No highlights yet"
           description="Upload your Kindle highlights to see your saved ideas here."
-          foxVariant="reading"
+          foxVariant="sleeping"
         >
           <View className="mt-6 w-56">
             <Button
@@ -26,12 +26,12 @@ export const HighlightsEmptyState: React.FC<HighlightsEmptyStateProps> = ({
               onPress={onActionPress}
               fullWidth
             />
-            <Button
+            {/* <Button
               label="Learn how it works"
               variant="ghost"
               onPress={() => {}}
               fullWidth
-            />
+            /> */}
           </View>
         </EmptyState>
       </View>

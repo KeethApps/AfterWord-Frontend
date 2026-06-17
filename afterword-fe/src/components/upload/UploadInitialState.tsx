@@ -19,7 +19,7 @@ export const UploadInitialState: React.FC<UploadInitialStateProps> = ({ onPickFi
         className="mt-6 mb-10 items-center justify-center p-8 bg-cream border-2 border-dashed border-mist rounded-3xl"
         style={({ pressed }) => pressed && { opacity: 0.8 }}
       >
-        <FolioFox variant="drop" size={100} className="mb-4" />
+        <FolioFox variant="desk" size={100} className="mb-4" />
         <Text className="font-sansBold text-base text-forest mb-1">Tap to choose your file</Text>
         <Text className="font-sans text-xs text-slate">My Clippings.txt only</Text>
       </Pressable>

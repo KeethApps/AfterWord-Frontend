@@ -769,10 +769,10 @@ export default function UploadScreen() {
             {/* ── Processing ─────────────────────────────────────────────── */}
             {state === "processing" && (
               <View style={styles.stateBlock}>
-                <FolioFox size={100} variant="thinking" style={styles.fox} />
+                <FolioFox size={100} variant="waving" style={styles.fox} />
                 <Text style={styles.stateTitle}>Highlights are uploading!</Text>
                 <Text style={styles.stateSubtitle}>
-                  We'll keep processing in the background. You can head over to your library, and they'll appear shortly.
+                  We&apos;ll keep processing in the background. You can head over to your library, and they&apos;ll appear shortly.
                 </Text>
 
                 <View style={styles.actionGroup}>

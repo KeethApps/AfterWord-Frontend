@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   TextInput,
 } from "react-native";
+import { Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -51,11 +52,7 @@ type SheetId = "profile" | "help" | "whatsNew" | "about" | null;
 
 // ─── Bottom Sheet ─────────────────────────────────────────────────────────────
 
-function BottomSheet({
-  visible,
-  onClose,
-  children,
-}: {
+function BottomSheet({ visible, onClose, children }: {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
@@ -65,26 +62,23 @@ function BottomSheet({
       visible={visible}
       animationType="slide"
       transparent
+      statusBarTranslucent        // ← key for Android: modal covers the status bar properly
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={sheet.overlay}
-      >
+      <View style={sheet.overlay}>
         <Pressable style={sheet.backdrop} onPress={onClose} />
         <View style={sheet.container}>
-          {/* drag handle */}
           <View style={sheet.handle} />
           <ScrollView
             showsVerticalScrollIndicator={false}
             style={sheet.scroll}
             keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 40 }}
           >
             {children}
-            <View style={{ height: 40 }} />
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -766,6 +760,17 @@ export default function SettingsScreen() {
       ]
     );
   }
+  const CANNY_URL =
+  "https://afterwordapp.canny.io/bug-reports/create?title=Bug+Report&details=%5BDescribe+the+bug%5D%0A%0A**Steps+to+reproduce%3A**%0A1.+%0A2.+%0A3.+%0A%0A**Expected+behaviour%3A**%0A%0A**Actual+behaviour%3A**%0A%0A**Device+%2F+OS+version%3A**%0A";
+
+async function handleReportBug() {
+  const supported = await Linking.canOpenURL(CANNY_URL);
+  if (supported) {
+    await Linking.openURL(CANNY_URL);
+  } else {
+    Alert.alert("Error", "Could not open the bug report page.");
+  }
+}
 
   async function handleExportData() {
     if (exportingData) return;
@@ -904,6 +909,12 @@ export default function SettingsScreen() {
               icon="help-circle-outline"
               label="Help & Support"
               onPress={() => openSheet("help")}
+            />
+            <RowDivider />
+            <NavRow
+              icon="bug-outline"
+              label="Report a Bug"
+              onPress={handleReportBug}
             />
             <RowDivider />
             <NavRow

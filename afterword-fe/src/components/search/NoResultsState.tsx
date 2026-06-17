@@ -25,7 +25,7 @@ export const NoResultsState: React.FC<NoResultsStateProps> = ({
         <EmptyState
           title="No results found"
           description="Here are some ideas you might like."
-          foxVariant="idea"
+          foxVariant="drop"
         >
           <View className="w-full px-4 mt-8">
             <Text className="font-sansBold text-sm text-forest mb-4">
@@ -56,7 +56,7 @@ export const NoResultsState: React.FC<NoResultsStateProps> = ({
       <EmptyState
         title="No results found"
         description="Try a different keyword or check your spelling."
-        foxVariant="question"
+        foxVariant="rain"
       >
         <View className="mt-4 w-48 items-center">
           <Button 
