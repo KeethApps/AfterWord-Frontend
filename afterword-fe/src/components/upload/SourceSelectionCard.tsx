@@ -49,7 +49,7 @@ const SOURCES: Source[] = [
   {
     key: "libby",
     label: "Libby",
-    detail: "Exported highlights.txt",
+    detail: "Reading Journey CSV export",
     icon: "library-outline",
   },
   {

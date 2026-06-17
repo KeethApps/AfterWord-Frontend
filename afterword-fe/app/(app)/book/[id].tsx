@@ -20,6 +20,8 @@ import { supabase } from "../../../lib/supabase";
 import { BookCover } from "../../../src/components/shared/BookCover";
 import { HighlightCard } from "../../../src/components/shared/HighlightCard";
 import { HighlightWithBook } from "../../../types";
+import { useAuth } from "../../../hooks/useAuth";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +53,7 @@ export default function BookDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
   const [book, setBook] = useState<BookDetail | null>(null);
   const [bookLoading, setBookLoading] = useState(true);
@@ -58,9 +61,14 @@ export default function BookDetailsScreen() {
 
   const [highlights, setHighlights] = useState<HighlightRaw[]>([]);
   const [totalHighlightCount, setTotalHighlightCount] = useState(0);
+  const [totalNoteCount, setTotalNoteCount] = useState(0);
   const [highlightsLoading, setHighlightsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const pageRef = useRef(0);
+  const highlightsLoadingRef = useRef(false);
+  const hasMoreRef = useRef(true);
+
+
 
   const [showFullDescription, setShowFullDescription] = useState(false);
 
@@ -147,7 +155,7 @@ export default function BookDetailsScreen() {
   // ─── Fetch Book ────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) return;
     async function fetchBook() {
       setBookLoading(true);
       try {
@@ -174,22 +182,28 @@ export default function BookDetailsScreen() {
       }
     }
     fetchBook();
-  }, [id]);
+  }, [id, user]);
+
 
   // ─── Fetch Highlights (paginated) ──────────────────────────────────────────
 
   const fetchHighlights = useCallback(async (page: number) => {
-    if (!id || highlightsLoading) return;
+    if (!id || !user || highlightsLoadingRef.current) return;
     setHighlightsLoading(true);
+    highlightsLoadingRef.current = true;
     try {
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      const [countRes, dataRes] = await Promise.all([
+      const [countRes, notesCountRes, dataRes] = await Promise.all([
         supabase
           .from("highlights")
           .select("id", { count: "exact", head: true })
           .eq("book_id", id),
+        supabase
+          .from("notes")
+          .select("id, highlights!inner(book_id)", { count: "exact", head: true })
+          .eq("highlights.book_id", id),
         supabase
           .from("highlights")
           .select("id, highlight_text, location, page_number, created_at, notes(id, content, created_at)")
@@ -198,8 +212,13 @@ export default function BookDetailsScreen() {
           .range(from, to),
       ]);
 
-      if (page === 0 && countRes.count !== null) {
-        setTotalHighlightCount(countRes.count);
+      if (page === 0) {
+        if (countRes.count !== null) {
+          setTotalHighlightCount(countRes.count);
+        }
+        if (notesCountRes.count !== null) {
+          setTotalNoteCount(notesCountRes.count);
+        }
       }
 
       const mapped: HighlightRaw[] = (dataRes.data ?? []).map((h: any) => ({
@@ -212,27 +231,37 @@ export default function BookDetailsScreen() {
       }));
 
       setHighlights((prev) => (page === 0 ? mapped : [...prev, ...mapped]));
-      setHasMore(mapped.length === PAGE_SIZE);
+      const isMoreAvailable = mapped.length === PAGE_SIZE;
+      setHasMore(isMoreAvailable);
+      hasMoreRef.current = isMoreAvailable;
     } catch (err) {
       console.error("Highlights fetch error:", err);
     } finally {
       setHighlightsLoading(false);
+      highlightsLoadingRef.current = false;
     }
-  }, [id]);
+  }, [id, user]);
+
+
 
   useEffect(() => {
+    if (!user) return;
     pageRef.current = 0;
     setHighlights([]);
     setHasMore(true);
+    hasMoreRef.current = true;
     fetchHighlights(0);
-  }, [id]);
+  }, [id, user, fetchHighlights]);
+
+
 
   const loadMore = useCallback(() => {
-    if (!hasMore || highlightsLoading) return;
+    if (!hasMoreRef.current || highlightsLoadingRef.current) return;
     const nextPage = pageRef.current + 1;
     pageRef.current = nextPage;
     fetchHighlights(nextPage);
-  }, [hasMore, highlightsLoading, fetchHighlights]);
+  }, [fetchHighlights]);
+
 
   // ─── Loading / Error ───────────────────────────────────────────────────────
 
@@ -303,7 +332,7 @@ export default function BookDetailsScreen() {
       <View style={{ marginHorizontal: 20, backgroundColor: Colors.white, borderRadius: 16, padding: 16, flexDirection: "row", justifyContent: "space-around", marginBottom: 24, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
         <StatItem icon="bookmark-outline" value={String(totalHighlightCount)} label={totalHighlightCount === 1 ? "Highlight" : "Highlights"} />
         <View style={{ width: 1, backgroundColor: Colors.border }} />
-        <StatItem icon="document-text-outline" value="0" label="Notes" />
+        <StatItem icon="document-text-outline" value={String(totalNoteCount)} label={totalNoteCount === 1 ? "Note" : "Notes"} />
         {publishYear && (
           <>
             <View style={{ width: 1, backgroundColor: Colors.border }} />
@@ -311,6 +340,7 @@ export default function BookDetailsScreen() {
           </>
         )}
       </View>
+
 
       {/* About */}
       {book.description ? (

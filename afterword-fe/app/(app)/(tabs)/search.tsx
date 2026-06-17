@@ -142,7 +142,7 @@ export default function SearchScreen() {
               className="flex-row items-center flex-1"
               onPress={() => setQuery(term)}
             >
-              <Ionicons name="time-outline" size={18} color={Colors.slate} className="mr-3" />
+              <Ionicons name="time-outline" size={30} color={Colors.slate} className="mr-3" />
               <Text className="font-sans text-base text-forest">{term}</Text>
             </Pressable>
             <Pressable onPress={() => removeRecentSearch(term)} className="p-2">

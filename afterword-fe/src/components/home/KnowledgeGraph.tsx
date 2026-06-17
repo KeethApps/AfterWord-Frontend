@@ -311,51 +311,72 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
 
   // Render wrapper component
   return (
-    <View 
+    <View
       onLayout={handleLayout}
-      className="flex-1 relative overflow-hidden"
+      style={{
+        backgroundColor: '#F2F0EA',
+        borderRadius: 16,
+        overflow: 'hidden',
+        elevation: 2,
+        padding: 20,
+        paddingLeft: 25,
+      }}
     >
-      {/* Header section matching style patterns */}
-      <View className="flex-row items-center mb-1">
+      {/* Left accent bar — absolutely positioned so it doesn't affect layout */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 5,
+          backgroundColor: Colors.forest,
+        }}
+      />
 
-        <View className="w-3.5 h-[2px] bg-gold mr-1.5" />
-        <Text className="font-sans text-[10px] uppercase tracking-widest text-gold">Knowledge Map</Text>
+      {/* Header — matches DailyHighlightCard */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <Ionicons name="git-network-outline" size={14} color={Colors.forest} />
+        <Text style={{ fontFamily: Fonts.sans, fontSize: 13, color: Colors.forest, fontWeight: '500', flex: 1 }}>
+          Knowledge Map
+        </Text>
       </View>
-      <Text className="font-serifBold text-lg text-forest mb-1">How your ideas connect</Text>
-      <Text className="font-sans text-xs text-slate mb-4">
-        Hover nodes to reveal quotes. Drag canvas to pan. Scroll or pinch to zoom.
+      <Text style={{ fontFamily: Fonts.serifBold, fontSize: 18, color: Colors.forest, lineHeight: 24, marginBottom: 4 }}>
+        How your ideas connect
+      </Text>
+      <Text style={{ fontFamily: Fonts.sans, fontSize: 12, color: Colors.slate, lineHeight: 18, marginBottom: 16 }}>
+        Tap a node to open its highlight. Drag to pan, pinch to zoom.
       </Text>
 
       {isLoading ? (
-        <View style={{ height }} className="items-center justify-center p-4">
-          <Animated.View style={{ width: '100%', height: '100%', opacity: pulseAnim }} className="flex-1 justify-between">
-            <View className="flex-1 items-center justify-center">
-              <View className="w-12 h-12 rounded-full bg-mist/60 absolute top-10 left-10" />
-              <View className="w-16 h-16 rounded-full bg-mist/60 absolute top-20 right-14" />
-              <View className="w-10 h-10 rounded-full bg-mist/60 absolute bottom-12 left-24" />
+        <View style={{ height, alignItems: 'center', justifyContent: 'center' }}>
+          <Animated.View style={{ width: '100%', height: '100%', opacity: pulseAnim }}>
+            <View style={{ flex: 1, position: 'relative' }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(180,180,170,0.4)', position: 'absolute', top: 40, left: 40 }} />
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(180,180,170,0.4)', position: 'absolute', top: 80, right: 56 }} />
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(180,180,170,0.4)', position: 'absolute', bottom: 48, left: 96 }} />
             </View>
           </Animated.View>
         </View>
       ) : error ? (
-        <View style={{ height }} className="items-center justify-center p-6">
-          <Text className="font-serifBold text-md text-danger mb-1">Failed to load Knowledge Map</Text>
-          <Text className="font-sans text-[11px] text-slate text-center">Please make sure you are signed in.</Text>
+        <View style={{ height, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+          <Text style={{ fontFamily: Fonts.serifBold, fontSize: 15, color: Colors.danger, marginBottom: 4, textAlign: 'center' }}>Failed to load Knowledge Map</Text>
+          <Text style={{ fontFamily: Fonts.sans, fontSize: 11, color: Colors.slate, textAlign: 'center' }}>Please make sure you are signed in.</Text>
         </View>
       ) : !graphRawData || !graphRawData.nodes || graphRawData.nodes.length < 5 ? (
-        <View style={{ height }} className="items-center justify-center p-6 bg-surface border border-mist rounded-xl shadow-sm">
+        <View style={{ height, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
           <Image
             source={require("../../../assets/crane/crane-icon.png")}
-            style={{ width: 64, height: 64, marginBottom: 12 }}
+            style={{ width: 56, height: 56, marginBottom: 12, opacity: 0.5 }}
             resizeMode="contain"
           />
-          <Text className="font-sans text-xs text-slate text-center max-w-[220px]">
+          <Text style={{ fontFamily: Fonts.sans, fontSize: 12, color: Colors.slate, textAlign: 'center', maxWidth: 200 }}>
             Add more highlights to see connections emerge
           </Text>
         </View>
       ) : (
-        <View 
-          style={{ height }}
-          className="relative overflow-hidden rounded-xl bg-transparent"
+        <View
+          style={{ height, overflow: 'hidden', borderRadius: 10 }}
           onStartShouldSetResponder={() => true}
           onMoveShouldSetResponder={() => true}
           onResponderGrant={onResponderGrant}
@@ -402,25 +423,27 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
           </Svg>
 
           {/* Interactive Zoom Overlay Controls */}
-          <View className="absolute top-2 right-2 flex-row gap-1.5 z-40">
-            <Pressable
-              onPress={() => setTransform(prev => ({ ...prev, scale: Math.min(3, prev.scale + 0.25) }))}
-              className="w-7 h-7 rounded-full bg-white/90 border border-border/80 items-center justify-center shadow-sm active:bg-white"
-            >
-              <Ionicons name="add" size={14} color="#1E3A2F" />
-            </Pressable>
-            <Pressable
-              onPress={() => setTransform(prev => ({ ...prev, scale: Math.max(0.5, prev.scale - 0.25) }))}
-              className="w-7 h-7 rounded-full bg-white/90 border border-border/80 items-center justify-center shadow-sm active:bg-white"
-            >
-              <Ionicons name="remove" size={14} color="#1E3A2F" />
-            </Pressable>
-            <Pressable
-              onPress={() => setTransform({ x: 0, y: 0, scale: 1 })}
-              className="w-7 h-7 rounded-full bg-white/90 border border-border/80 items-center justify-center shadow-sm active:bg-white"
-            >
-              <Ionicons name="refresh" size={13} color="#1E3A2F" />
-            </Pressable>
+          <View style={{ position: 'absolute', top: 8, right: 8, flexDirection: 'row', gap: 6, zIndex: 40 }}>
+            {([
+              { icon: 'add' as const, onPress: () => setTransform(prev => ({ ...prev, scale: Math.min(3, prev.scale + 0.25) })) },
+              { icon: 'remove' as const, onPress: () => setTransform(prev => ({ ...prev, scale: Math.max(0.5, prev.scale - 0.25) })) },
+              { icon: 'refresh' as const, onPress: () => setTransform({ x: 0, y: 0, scale: 1 }) },
+            ] as const).map(({ icon, onPress }) => (
+              <Pressable
+                key={icon}
+                onPress={onPress}
+                style={({ pressed }) => ({
+                  width: 28, height: 28, borderRadius: 14,
+                  backgroundColor: pressed ? '#fff' : 'rgba(255,255,255,0.92)',
+                  borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)',
+                  alignItems: 'center', justifyContent: 'center',
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.06, shadowRadius: 2, elevation: 1,
+                })}
+              >
+                <Ionicons name={icon} size={14} color={Colors.forest} />
+              </Pressable>
+            ))}
           </View>
 
           {/* Tooltip Overlay */}
@@ -431,64 +454,58 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
                 left: tooltipPosition.x,
                 top: tooltipPosition.y,
                 width: 220,
+                backgroundColor: '#fff',
+                borderRadius: 12,
+                padding: 12,
+                borderWidth: 1,
+                borderColor: 'rgba(0,0,0,0.07)',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 8,
+                elevation: 4,
+                zIndex: 50,
               }}
-              className="bg-white rounded-xl p-3 border border-border shadow-md pointer-events-none z-50"
             >
-              <Text 
-                numberOfLines={3} 
-                ellipsizeMode="tail" 
-                style={{ fontFamily: Fonts.serif }}
-                className="text-xs text-forest italic mb-2 leading-relaxed"
-              >
+              <Text numberOfLines={3} ellipsizeMode="tail"
+                style={{ fontFamily: Fonts.serif, fontSize: 12, color: Colors.forest, fontStyle: 'italic', lineHeight: 18, marginBottom: 8 }}>
                 "{hoveredNode.quote}"
               </Text>
-              <Text 
-                numberOfLines={1} 
-                ellipsizeMode="tail" 
-                style={{ fontFamily: Fonts.sansBold }}
-                className="text-[10px] text-slate uppercase tracking-wider"
-              >
+              <Text numberOfLines={1} ellipsizeMode="tail"
+                style={{ fontFamily: Fonts.sansBold, fontSize: 10, color: Colors.slate, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 {hoveredNode.book_title}
               </Text>
-              <Text 
-                numberOfLines={1} 
-                ellipsizeMode="tail" 
-                style={{ fontFamily: Fonts.sans }}
-                className="text-[9px] text-slate mt-0.5"
-              >
+              <Text numberOfLines={1} ellipsizeMode="tail"
+                style={{ fontFamily: Fonts.sans, fontSize: 9, color: Colors.slate, marginTop: 2 }}>
                 {hoveredNode.author}
               </Text>
             </View>
           )}
 
           {/* Book Color Legend */}
-          <View 
-            className="absolute bottom-2 left-2 bg-white/95 backdrop-blur-sm p-1.5 rounded-lg border border-border max-w-[150px] shadow-sm pointer-events-none"
-          >
-            {uniqueBooks.slice(0, 4).map((book) => {
+          <View style={{
+            position: 'absolute', bottom: 8, left: 8,
+            backgroundColor: 'rgba(255,255,255,0.95)',
+            padding: 6, borderRadius: 8,
+            borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)',
+            maxWidth: 150,
+            shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
+          }}>
+            {uniqueBooks.slice(0, 4).map((book, i) => {
               const displayTitle = book.length > 20 ? `${book.substring(0, 17)}...` : book;
               return (
-                <View key={book} className="flex-row items-center mb-0.5 last:mb-0">
-                  <View
-                    style={{ backgroundColor: bookColors[book] }}
-                    className="w-2 h-2 rounded-full mr-1"
-                  />
-                  <Text 
-                    style={{ fontFamily: Fonts.sans }} 
-                    className="text-[9px] text-slate flex-1"
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
+                <View key={book} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: i < Math.min(uniqueBooks.length, 4) - 1 ? 2 : 0 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: bookColors[book], marginRight: 4 }} />
+                  <Text style={{ fontFamily: Fonts.sans, fontSize: 9, color: Colors.slate, flex: 1 }}
+                    numberOfLines={1} ellipsizeMode="tail">
                     {displayTitle}
                   </Text>
                 </View>
               );
             })}
             {uniqueBooks.length > 4 && (
-              <Text 
-                style={{ fontFamily: Fonts.sans }}
-                className="text-[8px] text-slate italic mt-0.5"
-              >
+              <Text style={{ fontFamily: Fonts.sans, fontSize: 8, color: Colors.slate, fontStyle: 'italic', marginTop: 2 }}>
                 + {uniqueBooks.length - 4} more books
               </Text>
             )}

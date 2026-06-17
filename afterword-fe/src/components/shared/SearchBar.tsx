@@ -29,12 +29,12 @@ export const SearchBar = ({
   ...rest
 }: SearchBarProps) => {
   return (
-    <View className={`flex-row items-center gap-x-2 mt-5 ${className}`}>
-      <View className="flex-1 flex-row items-center bg-white rounded-full px-4 py-1 border border-border">
+    <View className={`flex-row items-center gap-x-2 mt-2 ${className}`}>
+      <View className="flex-1 h-12 flex-row items-center bg-white rounded-xl px-4 border border-border">
         <Ionicons name="search" size={18} color={Colors.slate} />
         
         <TextInput
-          className="flex-1 font-sans text-base text-forest ml-2"
+          className="flex-1 font-sans text-base text-forest ml-2 h-full py-0"
           placeholder={placeholder}
           placeholderTextColor={Colors.slate}
           value={value}
@@ -53,7 +53,7 @@ export const SearchBar = ({
 
         {rightIcon && value.length === 0 && (
           <Pressable onPress={onRightIconPress} className="ml-2 p-1">
-            <Ionicons name={rightIcon} size={20} color={Colors.slate} />
+            <Ionicons name={rightIcon} size={25} color={Colors.slate} />
           </Pressable>
         )}
       </View>
