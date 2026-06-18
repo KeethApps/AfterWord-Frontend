@@ -43,9 +43,9 @@ export const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ onSuggestion
         <View className="mr-4">
           <FolioFox size={150} variant="reading" />
         </View>
-        <View className="">
+        <View className="" style={{alignItems: "center"}}>
           <Text className="font-serifBold text-lg text-forest mb-1">
-            Search your second brain.
+            Search your second brain
           </Text>
           <Text className="font-sans text-sm text-slate">
             Every highlight is a thought worth revisiting.

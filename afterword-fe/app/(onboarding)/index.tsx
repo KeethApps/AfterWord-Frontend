@@ -1,12 +1,13 @@
 /**
  * (onboarding)/index.tsx
  *
- * Pure ScrollView-based onboarding — no library dependencies.
- * Works across iOS, Android, and web in an Expo Go monorepo.
- * Add images to assets/onboarding/ and swap the placeholder Views.
+ * Redesigned onboarding — logo fixed at top, large image area fills the
+ * middle, copy + CTA anchored to the bottom. Matches the Tasktugas-style
+ * layout. No library dependencies; works on iOS, Android, and web in Expo Go.
  */
 import React, { useRef, useState } from "react";
 import {
+  Animated,
   Dimensions,
   Image,
   NativeScrollEvent,
@@ -23,15 +24,16 @@ import { router } from "expo-router";
 import { Colors, Fonts, Spacing } from "../../constants/theme";
 import { useOnboarding } from "../../hooks/useOnboarding";
 
-const { width: W } = Dimensions.get("window");
+const { width: W, height: H } = Dimensions.get("window");
 
+// ─── Slide data ───────────────────────────────────────────────────────────────
 const SLIDES = [
   {
     id: "welcome",
     label: null,
     headline: "AfterWord",
     body: "A home for your best ideas\nfrom every book.",
-    image: require("../../assets/onboarding/crane-standing.png"),
+    image: require("../../assets/crane/crane-icon.png"),
     isFirst: true,
   },
   {
@@ -39,8 +41,7 @@ const SLIDES = [
     label: "1",
     headline: "Capture",
     body: "Save highlights, notes, and reflections from the books that move you.",
-    // image: require("../../assets/onboarding/crane-flying.png"),
-    image: null,
+    image: require("../../assets/onboarding/capture.png"),
     isFirst: false,
   },
   {
@@ -48,27 +49,49 @@ const SLIDES = [
     label: "2",
     headline: "Revisit",
     body: "Find meaningful ideas whenever you need them most.",
-    // image: require("../../assets/onboarding/crane-drinking.png"),
-    image: null,
+    image: require("../../assets/onboarding/revisit.png"),
+    isFirst: false,
+  },
+  {
+    id: "grow",
+    label: "3",
+    headline: "Grow",
+    body: "Connect ideas across books and watch your knowledge map expand.",
+    image: require("../../assets/onboarding/grow.png"),
     isFirst: false,
   },
 ];
 
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function OnboardingScreen() {
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef    = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
   const { completeOnboarding } = useOnboarding();
   const insets = useSafeAreaInsets();
 
+  const advanceProgress = (toIndex: number) => {
+    Animated.spring(progressAnim, {
+      toValue: toIndex / (SLIDES.length - 1),
+      useNativeDriver: false,
+      tension: 60,
+      friction: 10,
+    }).start();
+  };
+
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const page = Math.round(e.nativeEvent.contentOffset.x / W);
-    setIndex(page);
+    if (page !== index) {
+      setIndex(page);
+      advanceProgress(page);
+    }
   };
 
   const goNext = () => {
     const next = Math.min(index + 1, SLIDES.length - 1);
     scrollRef.current?.scrollTo({ x: next * W, animated: true });
     setIndex(next);
+    advanceProgress(next);
   };
 
   const finish = async () => {
@@ -77,18 +100,48 @@ export default function OnboardingScreen() {
   };
 
   const handleCta = () => {
-    if (index < SLIDES.length - 1) {
-      goNext();
-    } else {
-      finish();
-    }
+    if (index < SLIDES.length - 1) goNext();
+    else finish();
   };
 
-  const isLast = index === SLIDES.length - 1;
+  const isLast   = index === SLIDES.length - 1;
   const ctaLabel = index === 0 ? "Let's begin" : isLast ? "Continue" : "Next";
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
+  // Explicit slide height so children can size correctly inside a horizontal ScrollView.
+  // Header ~52px + bottom bar ~130px + gaps consumed by insets.
+  const HEADER_H = 52;
+  const BOTTOM_H = 130;
+  const slideH = H - insets.top - insets.bottom - HEADER_H - BOTTOM_H;
 
   return (
     <View style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+
+      {/* ── Persistent logo header ── */}
+      <View style={s.header}>
+        <Image
+          source={require("../../assets/crane/crane-icon.png")}
+          style={s.headerLogo}
+          resizeMode="contain"
+        />
+        <Text style={s.headerName}>AfterWord</Text>
+      </View>
+
+      {/* ── Skip link (slides 2-4) ── */}
+      {index > 0 && (
+        <TouchableOpacity
+          style={s.skipBtn}
+          onPress={finish}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Text style={s.skipText}>Skip</Text>
+        </TouchableOpacity>
+      )}
+
       {/* ── Slides ── */}
       <ScrollView
         ref={scrollRef}
@@ -100,72 +153,55 @@ export default function OnboardingScreen() {
         style={s.slider}
         contentContainerStyle={{ flexGrow: 0 }}
       >
-{SLIDES.map((slide) => (
-  <View key={slide.id} style={s.slide}>
-    {slide.isFirst ? (
-      // ── First slide: centered layout with floating logo ──
-      <View style={s.firstSlideInner}>
-        {/* Image area sits behind/above text, top-right anchored */}
-        <View style={s.firstImageWrap}>
-          {slide.image && (
-            <Image
-              source={slide.image}
-              style={s.firstImage}
-              resizeMode="contain"
-            />
-          )}
-        </View>
-
-        {/* Centered text block */}
-        <View style={s.firstTextBlock}>
-          <Text style={s.headlineFirst}>{slide.headline}</Text>
-          <View style={s.firstDivider} />
-          <Text style={s.body}>{slide.body}</Text>
-        </View>
-      </View>
-    ) : (
-      // ── Slides 2 & 3: unchanged layout ──
-      <>
-        {slide.label && (
-          <View style={s.labelRow}>
-            <Text style={s.labelNum}>{slide.label}</Text>
-            <View style={s.labelLine} />
-          </View>
-        )}
-        <Text style={[s.headline]}>{slide.headline}</Text>
-        <Text style={s.body}>{slide.body}</Text>
-        <View style={s.imageArea}>
-          {slide.image ? (
-            <Image source={slide.image} style={s.image} resizeMode="contain" />
-          ) : (
-            <View style={s.imagePlaceholder}>
-              <Text style={s.placeholderText}>
-                assets/onboarding/{"\n"}{slide.id}.png
-              </Text>
+        {SLIDES.map((sl) => (
+          <View key={sl.id} style={[s.slide, { height: slideH }]}>
+            {/* ── Large image area ── */}
+            <View style={s.imageArea}>
+              <Image
+                source={sl.image}
+                style={s.slideImage}
+                resizeMode="contain"
+              />
             </View>
-          )}
-        </View>
-      </>
-    )}
-  </View>
-))}
+
+            {/* ── Copy block ── */}
+            <View style={s.copyBlock}>
+              {sl.isFirst ? (
+                // Welcome slide: centred large headline + divider
+                <>
+                  <Text style={[s.headline, s.headlineFirst]}>{sl.headline}</Text>
+                  <View style={s.firstDivider} />
+                  <Text style={[s.body, s.bodyCentered]}>{sl.body}</Text>
+                </>
+              ) : (
+                // Feature slides: numbered label row + left-aligned copy
+                <>
+                  {sl.label && (
+                    <View style={s.labelRow}>
+                      <Text style={s.labelNum}>{sl.label}</Text>
+                      <View style={s.labelLine} />
+                    </View>
+                  )}
+                  <Text style={s.headline}>{sl.headline}</Text>
+                  <Text style={s.body}>{sl.body}</Text>
+                </>
+              )}
+            </View>
+          </View>
+        ))}
       </ScrollView>
 
       {/* ── Bottom bar ── */}
       <View style={s.bottom}>
-        {/* Dots */}
-        <View style={s.dots}>
-          {SLIDES.map((_, i) => (
-            <View key={i} style={[s.dot, i === index && s.dotActive]} />
-          ))}
+        {/* Animated progress bar */}
+        <View style={s.progressTrack}>
+          <Animated.View style={[s.progressFill, { width: progressWidth }]} />
         </View>
 
-        {/* Primary CTA */}
         <TouchableOpacity style={s.btn} onPress={handleCta} activeOpacity={0.85}>
           <Text style={s.btnText}>{ctaLabel}</Text>
         </TouchableOpacity>
 
-        {/* Secondary link */}
         <TouchableOpacity onPress={finish} style={s.secondaryBtn}>
           <Text style={s.secondaryText}>
             {index === 0 ? "Already have an account? Log in" : "Create account or log in"}
@@ -176,9 +212,11 @@ export default function OnboardingScreen() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const FOREST = Colors.forest ?? "#1E3A34";
 const CREAM  = Colors.cream  ?? "#F5F2EC";
 const SLATE  = Colors.slate  ?? "#6B7B74";
+const GOLD   = Colors.gold   ?? "#C9A227";
 
 const s = StyleSheet.create({
   root: {
@@ -186,143 +224,157 @@ const s = StyleSheet.create({
     backgroundColor: CREAM,
   },
 
-  // Slider takes all remaining space between top and bottom bar
+  // ── Persistent logo header ──
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  headerLogo: {
+    width: 28,
+    height: 28,
+  },
+  headerName: {
+    fontFamily: Fonts?.serifBold ?? "serif",
+    fontSize: 18,
+    color: FOREST,
+    letterSpacing: -0.3,
+  },
+
+  // ── Skip ──
+  skipBtn: {
+    position: "absolute",
+    top: 16,
+    right: 24,
+    zIndex: 10,
+  },
+  skipText: {
+    fontFamily: Fonts?.sans ?? "sans-serif",
+    fontSize: 14,
+    color: SLATE,
+    letterSpacing: 0.1,
+  },
+
+  // ── Slider ──
   slider: {
     flex: 1,
   },
-
   slide: {
     width: W,
-    flex: 1,
+    // height is set inline via slideH — no flex:1 here, it doesn't work
+    // inside a horizontal ScrollView
     paddingHorizontal: 28,
-    paddingTop: 32,
+    paddingTop: 8,
   },
-  // Add to StyleSheet.create({ ... })
 
-firstSlideInner: {
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-},
+  // ── Image area: fills most of the slide ──
+  imageArea: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  slideImage: {
+    width: "100%",
+    maxWidth: Platform.OS === "web" ? 420 : 320,
+    height: "100%",
+    maxHeight: Platform.OS === "web" ? 560 : 400,
+  },
 
-// Logo floats top-right relative to the centered text block
-firstImageWrap: {
-  position: "absolute",
-  top: -8,         // sits just above the text block's top edge
-  right: -8,       // flush to the right of the text block
-  width: 72,
-  height: 72,
-  zIndex: 2,
-},
-firstImage: {
-  width: "100%",
-  height: "100%",
-},
+  // ── Copy block: just below the image ──
+  copyBlock: {
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
 
-firstTextBlock: {
-  width: "100%",
-  paddingHorizontal: 4,
-},
-firstDivider: {
-  width: 32,
-  height: 1.5,
-  backgroundColor: FOREST + "40",
-  marginVertical: 16,
-},
+  // Slide 1 extras
+  headlineFirst: {
+    textAlign: "center",
+    fontSize: 44,
+    lineHeight: 54,
+    letterSpacing: -0.5,
+  },
+  firstDivider: {
+    width: 32,
+    height: 1.5,
+    backgroundColor: FOREST + "40",
+    alignSelf: "center",
+    marginVertical: 14,
+  },
+  bodyCentered: {
+    textAlign: "center",
+  },
 
+  // Feature slides
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 12,
   },
   labelNum: {
     fontFamily: Fonts?.sans ?? "sans-serif",
-    fontSize: 13,
-    color: SLATE,
+    fontSize: 11,
+    letterSpacing: 2.5,
+    color: GOLD,
+    textTransform: "uppercase",
   },
   labelLine: {
     flex: 1,
     height: 1,
-    backgroundColor: SLATE + "44",
+    backgroundColor: GOLD + "44",
   },
-
   headline: {
     fontFamily: Fonts?.serifBold ?? "serif",
-    fontSize: 40,
-    lineHeight: 50,
+    fontSize: 36,
+    lineHeight: 46,
     color: FOREST,
-    marginBottom: 12,
-  },
-  headlineFirst: {
-    fontSize: 52,
-    lineHeight: 62,
+    marginBottom: 10,
+    letterSpacing: -0.3,
   },
   body: {
     fontFamily: Fonts?.sans ?? "sans-serif",
-    fontSize: 16,
-    lineHeight: 26,
+    fontSize: 15,
+    lineHeight: 24,
     color: SLATE,
   },
 
-  // Image fills remaining space in the slide naturally
-  imageArea: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 24,
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  imagePlaceholder: {
-    width: "80%",
-    aspectRatio: 0.9,
-    maxHeight: 280,
-    borderRadius: 16,
-    backgroundColor: FOREST + "0C",
-    borderWidth: 1,
-    borderColor: FOREST + "18",
-    borderStyle: "dashed",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  placeholderText: {
-    fontFamily: Fonts?.sans ?? "sans-serif",
-    fontSize: 12,
-    color: SLATE + "99",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-
-  // Bottom bar is part of the normal flow — no absolute positioning
+  // ── Bottom bar ──
   bottom: {
     paddingHorizontal: 28,
-    paddingTop: 16,
+    paddingTop: 12,
     paddingBottom: 24,
-    gap: 12,
+    gap: 14,
   },
-  dots: {
-    flexDirection: "row",
-    gap: 6,
-    marginBottom: 4,
+  progressTrack: {
+    height: 2,
+    backgroundColor: FOREST + "18",
+    borderRadius: 2,
+    overflow: "hidden",
+    marginBottom: 2,
   },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: FOREST + "28",
-  },
-  dotActive: {
-    width: 22,
-    backgroundColor: FOREST,
+  progressFill: {
+    height: "100%",
+    backgroundColor: GOLD,
+    borderRadius: 2,
   },
   btn: {
     backgroundColor: FOREST,
     borderRadius: 14,
     paddingVertical: 18,
     alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: FOREST,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+      },
+      android: { elevation: 4 },
+      web: { boxShadow: `0 6px 16px ${FOREST}22` },
+    }),
   },
   btnText: {
     fontFamily: Fonts?.sans ?? "sans-serif",

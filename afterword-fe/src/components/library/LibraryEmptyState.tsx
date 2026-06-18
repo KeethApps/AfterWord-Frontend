@@ -36,7 +36,7 @@ export const LibraryEmptyState: React.FC<LibraryEmptyStateProps> = ({
         >
           <View className="mt-4 w-64 items-center gap-y-4">
             <Button label="Upload Highlights" onPress={() => router.push("/upload")} fullWidth />
-            <Button label="Learn how it works" variant="ghost" onPress={() => {}} fullWidth />
+            {/* <Button label="Learn how it works" variant="ghost" onPress={() => {}} fullWidth /> */}
           </View>
         </EmptyState>
       );
