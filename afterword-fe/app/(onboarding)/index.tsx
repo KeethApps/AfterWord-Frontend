@@ -134,13 +134,20 @@ export default function OnboardingScreen() {
     if (page !== index) setIndex(page);
   };
 
-  const finish = async () => {
+  // Onboarding is "done" the moment someone leaves it, whether that's by
+  // finishing the slides, skipping, or jumping straight to login — so every
+  // exit path marks it complete before navigating.
+  const completeAndGoTo = async (route: "sign-in" | "sign-up") => {
     await completeOnboarding();
-    router.replace("/(auth)/sign-in");
+    router.replace(`/(auth)/${route}`);
   };
 
-  const handleNext = () => (isLast ? finish() : goToIndex(index + 1));
+  const handleNext = () => (isLast ? completeAndGoTo("sign-up") : goToIndex(index + 1));
   const handleBack = () => goToIndex(index - 1);
+  // "I already have an account" only shows on the first slide and should go
+  // to sign-in. Everywhere else, the secondary action reads "Skip" and
+  // should land where the final CTA would have — sign-up.
+  const handleSecondary = () => completeAndGoTo(index === 0 ? "sign-in" : "sign-up");
 
   // If the browser window is resized mid-flow, keep the active slide in
   // view instead of leaving the ScrollView offset stale at the old width.
@@ -162,7 +169,7 @@ export default function OnboardingScreen() {
         onNext={handleNext}
         onBack={handleBack}
         onJump={goToIndex}
-        onSkip={finish}
+        onSecondary={handleSecondary}
       />
     );
   }
@@ -178,7 +185,7 @@ export default function OnboardingScreen() {
       total={total}
       ctaLabel={ctaLabel}
       onNext={handleNext}
-      onSkip={finish}
+      onSecondary={handleSecondary}
     />
   );
 }
@@ -234,7 +241,7 @@ function StackedOnboarding({
   total,
   ctaLabel,
   onNext,
-  onSkip,
+  onSecondary,
 }: {
   width: number;
   height: number;
@@ -245,7 +252,7 @@ function StackedOnboarding({
   total: number;
   ctaLabel: string;
   onNext: () => void;
-  onSkip: () => void;
+  onSecondary: () => void;
 }) {
   const HEADER_H = 56;
   const BOTTOM_H = 188; // taller now: two stacked buttons + dots, not one button + text
@@ -310,7 +317,7 @@ function StackedOnboarding({
           <Text style={stacked.btnPrimaryText}>{ctaLabel}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={stacked.btnSecondary} onPress={onSkip} activeOpacity={0.7}>
+        <TouchableOpacity style={stacked.btnSecondary} onPress={onSecondary} activeOpacity={0.7}>
           <Text style={stacked.btnSecondaryText}>{secondaryLabel}</Text>
         </TouchableOpacity>
       </View>
@@ -451,7 +458,7 @@ function SplitOnboarding({
   onNext,
   onBack,
   onJump,
-  onSkip,
+  onSecondary,
 }: {
   slide: Slide;
   index: number;
@@ -461,7 +468,7 @@ function SplitOnboarding({
   onNext: () => void;
   onBack: () => void;
   onJump: (i: number) => void;
-  onSkip: () => void;
+  onSecondary: () => void;
 }) {
   const heroTag = slide.label ? `Step ${slide.label} of ${total - 1}` : "Welcome";
 
@@ -502,7 +509,7 @@ function SplitOnboarding({
               <Text style={split.nextBtnText}>{ctaLabel}</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={onSkip} activeOpacity={0.7}>
+          <TouchableOpacity onPress={onSecondary} activeOpacity={0.7}>
             <Text style={split.secondaryText}>
               {index === 0 ? "Already have an account? Log in" : "Skip for now"}
             </Text>
@@ -648,7 +655,7 @@ const split = StyleSheet.create({
     height: 260,
     borderRadius: 28,
     backgroundColor: CREAM,
-    padding: 0,
+    padding: 20,
     transform: [{ rotate: "-3deg" }],
     ...Platform.select({
       web: { boxShadow: `0 24px 48px ${FOREST_DARK}55` },
