@@ -1,33 +1,65 @@
 /**
  * (onboarding)/index.tsx
  *
- * Redesigned onboarding — logo fixed at top, large image area fills the
- * middle, copy + CTA anchored to the bottom. Matches the Tasktugas-style
- * layout. No library dependencies; works on iOS, Android, and web in Expo Go.
+ * Two distinct layouts sharing one state machine:
+ *
+ *  - StackedOnboarding  → native mobile + narrow web. Swipeable, full-bleed
+ *    illustration, two stacked buttons (filled + outline), dot indicators
+ *    under the image. (Tasktugas reference.)
+ *
+ *  - SplitOnboarding    → wide web (>= WEB_BREAKPOINT). Two-column layout:
+ *    a light control panel (logo, headline, dots, CTA) on one side and a
+ *    dark textured hero panel (italic serif pull-quote + floating image
+ *    card) on the other. No swipe gesture on desktop — index changes via
+ *    buttons/dots, with a crossfade instead of a horizontal scroll.
+ *    (Filianta reference.)
+ *
+ * No new dependencies. Works in Expo Go on iOS, Android, and web.
  */
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Dimensions,
   Image,
+  ImageSourcePropType,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets, EdgeInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { Colors, Fonts, Spacing } from "../../constants/theme";
+import { Colors, Fonts } from "../../constants/theme";
 import { useOnboarding } from "../../hooks/useOnboarding";
 
-const { width: W, height: H } = Dimensions.get("window");
+// Below this window width, web falls back to the stacked mobile layout.
+// Without this, a resized/narrow browser window would try to cram two
+// columns into a phone-sized viewport and everything would clip.
+const WEB_BREAKPOINT = 880;
 
-// ─── Slide data ───────────────────────────────────────────────────────────────
-const SLIDES = [
+// ─── Brand colors (with safe fallbacks if the theme file doesn't define them) ─
+const FOREST = Colors.forest ?? "#1E3A34";
+const FOREST_DARK = Colors.forestDark ?? "#12231F";
+const CREAM = Colors.cream ?? "#F5F2EC";
+const SLATE = Colors.slate ?? "#6B7B74";
+const GOLD = Colors.gold ?? "#C9A227";
+
+// ─── Slide data ────────────────────────────────────────────────────────────
+type Slide = {
+  id: string;
+  label: string | null;
+  headline: string;
+  body: string;
+  image: ImageSourcePropType;
+  isFirst: boolean;
+};
+
+const SLIDES: Slide[] = [
   {
     id: "welcome",
     label: null,
@@ -62,36 +94,44 @@ const SLIDES = [
   },
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Root component: owns state, decides which layout to render ──────────────
 export default function OnboardingScreen() {
-  const scrollRef    = useRef<ScrollView>(null);
-  const [index, setIndex] = useState(0);
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const { completeOnboarding } = useOnboarding();
+  const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { completeOnboarding } = useOnboarding();
 
-  const advanceProgress = (toIndex: number) => {
-    Animated.spring(progressAnim, {
-      toValue: toIndex / (SLIDES.length - 1),
-      useNativeDriver: false,
-      tension: 60,
-      friction: 10,
-    }).start();
-  };
+  const isSplitLayout = Platform.OS === "web" && width >= WEB_BREAKPOINT;
 
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const page = Math.round(e.nativeEvent.contentOffset.x / W);
-    if (page !== index) {
-      setIndex(page);
-      advanceProgress(page);
+  const [index, setIndex] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  // Drives the crossfade on the split layout when the slide changes.
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const total = SLIDES.length;
+  const isLast = index === total - 1;
+  const ctaLabel = index === 0 ? "Let's begin" : isLast ? "Get started" : "Next";
+
+  // Single entry point for moving to a slide, used by swipe, buttons, and dots.
+  const goToIndex = (next: number) => {
+    const clamped = Math.max(0, Math.min(next, total - 1));
+    if (clamped === index) return;
+
+    if (isSplitLayout) {
+      // Desktop has no scroll surface to swipe, so we fade out, swap the
+      // slide, then fade back in rather than relying on a gesture.
+      Animated.timing(fadeAnim, { toValue: 0, duration: 140, useNativeDriver: true }).start(() => {
+        setIndex(clamped);
+        Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+      });
+    } else {
+      setIndex(clamped);
+      scrollRef.current?.scrollTo({ x: clamped * width, animated: true });
     }
   };
 
-  const goNext = () => {
-    const next = Math.min(index + 1, SLIDES.length - 1);
-    scrollRef.current?.scrollTo({ x: next * W, animated: true });
-    setIndex(next);
-    advanceProgress(next);
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const page = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (page !== index) setIndex(page);
   };
 
   const finish = async () => {
@@ -99,50 +139,130 @@ export default function OnboardingScreen() {
     router.replace("/(auth)/sign-in");
   };
 
-  const handleCta = () => {
-    if (index < SLIDES.length - 1) goNext();
-    else finish();
-  };
+  const handleNext = () => (isLast ? finish() : goToIndex(index + 1));
+  const handleBack = () => goToIndex(index - 1);
 
-  const isLast   = index === SLIDES.length - 1;
-  const ctaLabel = index === 0 ? "Let's begin" : isLast ? "Continue" : "Next";
+  // If the browser window is resized mid-flow, keep the active slide in
+  // view instead of leaving the ScrollView offset stale at the old width.
+  useEffect(() => {
+    if (!isSplitLayout) {
+      scrollRef.current?.scrollTo({ x: index * width, animated: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width, isSplitLayout]);
 
-  const progressWidth = progressAnim.interpolate({
-    inputRange:  [0, 1],
-    outputRange: ["0%", "100%"],
-  });
-
-  // Explicit slide height so children can size correctly inside a horizontal ScrollView.
-  // Header ~52px + bottom bar ~130px + gaps consumed by insets.
-  const HEADER_H = 52;
-  const BOTTOM_H = 130;
-  const slideH = H - insets.top - insets.bottom - HEADER_H - BOTTOM_H;
+  if (isSplitLayout) {
+    return (
+      <SplitOnboarding
+        slide={SLIDES[index]}
+        index={index}
+        total={total}
+        fadeAnim={fadeAnim}
+        ctaLabel={ctaLabel}
+        onNext={handleNext}
+        onBack={handleBack}
+        onJump={goToIndex}
+        onSkip={finish}
+      />
+    );
+  }
 
   return (
-    <View style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <StackedOnboarding
+      width={width}
+      height={height}
+      insets={insets}
+      scrollRef={scrollRef}
+      onScroll={onScroll}
+      index={index}
+      total={total}
+      ctaLabel={ctaLabel}
+      onNext={handleNext}
+      onSkip={finish}
+    />
+  );
+}
 
-      {/* ── Persistent logo header ── */}
-      <View style={s.header}>
+// ─── Shared dot indicator ──────────────────────────────────────────────────
+function PillIndicator({
+  total,
+  index,
+  onJump,
+}: {
+  total: number;
+  index: number;
+  onJump?: (i: number) => void;
+}) {
+  return (
+    <View style={pill.row}>
+      {Array.from({ length: total }).map((_, i) => (
+        <Pressable
+          key={i}
+          disabled={!onJump}
+          onPress={onJump ? () => onJump(i) : undefined}
+          style={[pill.dot, i === index && pill.dotActive]}
+        />
+      ))}
+    </View>
+  );
+}
+
+const pill = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: 6 },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: SLATE + "33",
+  },
+  dotActive: {
+    width: 22,
+    backgroundColor: GOLD,
+  },
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// MOBILE / NARROW-WEB — stacked, swipeable (Tasktugas reference)
+// ════════════════════════════════════════════════════════════════════════════
+function StackedOnboarding({
+  width,
+  height,
+  insets,
+  scrollRef,
+  onScroll,
+  index,
+  total,
+  ctaLabel,
+  onNext,
+  onSkip,
+}: {
+  width: number;
+  height: number;
+  insets: EdgeInsets;
+  scrollRef: React.RefObject<ScrollView>;
+  onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  index: number;
+  total: number;
+  ctaLabel: string;
+  onNext: () => void;
+  onSkip: () => void;
+}) {
+  const HEADER_H = 56;
+  const BOTTOM_H = 188; // taller now: two stacked buttons + dots, not one button + text
+  const slideH = height - insets.top - insets.bottom - HEADER_H - BOTTOM_H;
+  const secondaryLabel = index === 0 ? "I already have an account" : "Skip";
+
+  return (
+    <View style={[stacked.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View style={stacked.header}>
         <Image
           source={require("../../assets/crane/crane-icon.png")}
-          style={s.headerLogo}
+          style={stacked.headerLogo}
           resizeMode="contain"
         />
-        <Text style={s.headerName}>AfterWord</Text>
+        <Text style={stacked.headerName}>AfterWord</Text>
       </View>
 
-      {/* ── Skip link (slides 2-4) ── */}
-      {index > 0 && (
-        <TouchableOpacity
-          style={s.skipBtn}
-          onPress={finish}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Text style={s.skipText}>Skip</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* ── Slides ── */}
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -150,40 +270,32 @@ export default function OnboardingScreen() {
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={onScroll}
-        style={s.slider}
+        style={stacked.slider}
         contentContainerStyle={{ flexGrow: 0 }}
       >
         {SLIDES.map((sl) => (
-          <View key={sl.id} style={[s.slide, { height: slideH }]}>
-            {/* ── Large image area ── */}
-            <View style={s.imageArea}>
-              <Image
-                source={sl.image}
-                style={s.slideImage}
-                resizeMode="contain"
-              />
+          <View key={sl.id} style={[stacked.slide, { width, height: slideH }]}>
+            <View style={[stacked.imageArea, !sl.isFirst && stacked.imageCard]}>
+              <Image source={sl.image} style={stacked.slideImage} resizeMode="contain" />
             </View>
 
-            {/* ── Copy block ── */}
-            <View style={s.copyBlock}>
+            <View style={stacked.copyBlock}>
               {sl.isFirst ? (
-                // Welcome slide: centred large headline + divider
                 <>
-                  <Text style={[s.headline, s.headlineFirst]}>{sl.headline}</Text>
-                  <View style={s.firstDivider} />
-                  <Text style={[s.body, s.bodyCentered]}>{sl.body}</Text>
+                  <Text style={[stacked.headline, stacked.headlineFirst]}>{sl.headline}</Text>
+                  <View style={stacked.firstDivider} />
+                  <Text style={[stacked.body, stacked.bodyCentered]}>{sl.body}</Text>
                 </>
               ) : (
-                // Feature slides: numbered label row + left-aligned copy
                 <>
                   {sl.label && (
-                    <View style={s.labelRow}>
-                      <Text style={s.labelNum}>{sl.label}</Text>
-                      <View style={s.labelLine} />
+                    <View style={stacked.labelRow}>
+                      <Text style={stacked.labelNum}>{sl.label.padStart(2, "0")}</Text>
+                      <View style={stacked.labelLine} />
                     </View>
                   )}
-                  <Text style={s.headline}>{sl.headline}</Text>
-                  <Text style={s.body}>{sl.body}</Text>
+                  <Text style={stacked.headline}>{sl.headline}</Text>
+                  <Text style={stacked.body}>{sl.body}</Text>
                 </>
               )}
             </View>
@@ -191,52 +303,33 @@ export default function OnboardingScreen() {
         ))}
       </ScrollView>
 
-      {/* ── Bottom bar ── */}
-      <View style={s.bottom}>
-        {/* Animated progress bar */}
-        <View style={s.progressTrack}>
-          <Animated.View style={[s.progressFill, { width: progressWidth }]} />
-        </View>
+      <View style={stacked.bottom}>
+        <PillIndicator total={total} index={index} />
 
-        <TouchableOpacity style={s.btn} onPress={handleCta} activeOpacity={0.85}>
-          <Text style={s.btnText}>{ctaLabel}</Text>
+        <TouchableOpacity style={stacked.btnPrimary} onPress={onNext} activeOpacity={0.85}>
+          <Text style={stacked.btnPrimaryText}>{ctaLabel}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={finish} style={s.secondaryBtn}>
-          <Text style={s.secondaryText}>
-            {index === 0 ? "Already have an account? Log in" : "Create account or log in"}
-          </Text>
+        <TouchableOpacity style={stacked.btnSecondary} onPress={onSkip} activeOpacity={0.7}>
+          <Text style={stacked.btnSecondaryText}>{secondaryLabel}</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const FOREST = Colors.forest ?? "#1E3A34";
-const CREAM  = Colors.cream  ?? "#F5F2EC";
-const SLATE  = Colors.slate  ?? "#6B7B74";
-const GOLD   = Colors.gold   ?? "#C9A227";
+const stacked = StyleSheet.create({
+  root: { flex: 1, backgroundColor: CREAM },
 
-const s = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: CREAM,
-  },
-
-  // ── Persistent logo header ──
   header: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     paddingTop: 8,
     paddingBottom: 4,
   },
-  headerLogo: {
-    width: 28,
-    height: 28,
-  },
+  headerLogo: { width: 28, height: 28 },
   headerName: {
     fontFamily: Fonts?.serifBold ?? "serif",
     fontSize: 18,
@@ -244,58 +337,38 @@ const s = StyleSheet.create({
     letterSpacing: -0.3,
   },
 
-  // ── Skip ──
-  skipBtn: {
-    position: "absolute",
-    top: 16,
-    right: 24,
-    zIndex: 10,
-  },
-  skipText: {
-    fontFamily: Fonts?.sans ?? "sans-serif",
-    fontSize: 14,
-    color: SLATE,
-    letterSpacing: 0.1,
-  },
+  slider: { flex: 1 },
+  slide: { paddingHorizontal: 28, paddingTop: 8 },
 
-  // ── Slider ──
-  slider: {
-    flex: 1,
-  },
-  slide: {
-    width: W,
-    // height is set inline via slideH — no flex:1 here, it doesn't work
-    // inside a horizontal ScrollView
-    paddingHorizontal: 28,
-    paddingTop: 8,
-  },
-
-  // ── Image area: fills most of the slide ──
-  imageArea: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+  imageArea: { flex: 1, alignItems: "center", justifyContent: "center" },
+  // Feature slides (not the welcome screen) sit inside a soft card — this is
+  // what gives the illustration a "premium" framed feel instead of floating
+  // bare on the cream background.
+  imageCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 32,
+    marginVertical: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: FOREST,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 24,
+      },
+      android: { elevation: 3 },
+      web: { boxShadow: `0 10px 30px ${FOREST}14` },
+    }),
   },
   slideImage: {
-    width: "100%",
-    maxWidth: Platform.OS === "web" ? 420 : 320,
-    height: "100%",
-    maxHeight: Platform.OS === "web" ? 560 : 400,
+    width: "78%",
+    maxWidth: Platform.OS === "web" ? 360 : 280,
+    height: "78%",
+    maxHeight: Platform.OS === "web" ? 480 : 340,
   },
 
-  // ── Copy block: just below the image ──
-  copyBlock: {
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
+  copyBlock: { paddingTop: 16, paddingBottom: 8 },
 
-  // Slide 1 extras
-  headlineFirst: {
-    textAlign: "center",
-    fontSize: 44,
-    lineHeight: 54,
-    letterSpacing: -0.5,
-  },
+  headlineFirst: { textAlign: "center", fontSize: 44, lineHeight: 54, letterSpacing: -0.5 },
   firstDivider: {
     width: 32,
     height: 1.5,
@@ -303,17 +376,9 @@ const s = StyleSheet.create({
     alignSelf: "center",
     marginVertical: 14,
   },
-  bodyCentered: {
-    textAlign: "center",
-  },
+  bodyCentered: { textAlign: "center" },
 
-  // Feature slides
-  labelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
   labelNum: {
     fontFamily: Fonts?.sans ?? "sans-serif",
     fontSize: 11,
@@ -321,11 +386,7 @@ const s = StyleSheet.create({
     color: GOLD,
     textTransform: "uppercase",
   },
-  labelLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: GOLD + "44",
-  },
+  labelLine: { flex: 1, height: 1, backgroundColor: GOLD + "44" },
   headline: {
     fontFamily: Fonts?.serifBold ?? "serif",
     fontSize: 36,
@@ -334,33 +395,11 @@ const s = StyleSheet.create({
     marginBottom: 10,
     letterSpacing: -0.3,
   },
-  body: {
-    fontFamily: Fonts?.sans ?? "sans-serif",
-    fontSize: 15,
-    lineHeight: 24,
-    color: SLATE,
-  },
+  body: { fontFamily: Fonts?.sans ?? "sans-serif", fontSize: 15, lineHeight: 24, color: SLATE },
 
-  // ── Bottom bar ──
-  bottom: {
-    paddingHorizontal: 28,
-    paddingTop: 12,
-    paddingBottom: 24,
-    gap: 14,
-  },
-  progressTrack: {
-    height: 2,
-    backgroundColor: FOREST + "18",
-    borderRadius: 2,
-    overflow: "hidden",
-    marginBottom: 2,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: GOLD,
-    borderRadius: 2,
-  },
-  btn: {
+  bottom: { paddingHorizontal: 28, paddingTop: 16, paddingBottom: 24, gap: 14, alignItems: "center" },
+  btnPrimary: {
+    width: "100%",
     backgroundColor: FOREST,
     borderRadius: 14,
     paddingVertical: 18,
@@ -376,20 +415,245 @@ const s = StyleSheet.create({
       web: { boxShadow: `0 6px 16px ${FOREST}22` },
     }),
   },
-  btnText: {
+  btnPrimaryText: {
     fontFamily: Fonts?.sans ?? "sans-serif",
     fontSize: 16,
     fontWeight: "600",
     color: CREAM,
     letterSpacing: 0.2,
   },
-  secondaryBtn: {
+  btnSecondary: {
+    width: "100%",
+    backgroundColor: "transparent",
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: FOREST + "26",
+    paddingVertical: 17,
     alignItems: "center",
-    paddingVertical: 4,
+  },
+  btnSecondaryText: {
+    fontFamily: Fonts?.sans ?? "sans-serif",
+    fontSize: 15,
+    fontWeight: "500",
+    color: FOREST,
+  },
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// WIDE WEB — two-column split (Filianta reference)
+// ════════════════════════════════════════════════════════════════════════════
+function SplitOnboarding({
+  slide,
+  index,
+  total,
+  fadeAnim,
+  ctaLabel,
+  onNext,
+  onBack,
+  onJump,
+  onSkip,
+}: {
+  slide: Slide;
+  index: number;
+  total: number;
+  fadeAnim: Animated.Value;
+  ctaLabel: string;
+  onNext: () => void;
+  onBack: () => void;
+  onJump: (i: number) => void;
+  onSkip: () => void;
+}) {
+  const heroTag = slide.label ? `Step ${slide.label} of ${total - 1}` : "Welcome";
+
+  return (
+    <View style={split.root}>
+      {/* ── Left: light control panel ── */}
+      <View style={split.leftPanel}>
+        <View style={split.leftHeader}>
+          <Image
+            source={require("../../assets/crane/crane-icon.png")}
+            style={split.headerLogo}
+            resizeMode="contain"
+          />
+          <Text style={split.headerName}>AfterWord</Text>
+        </View>
+
+        <Animated.View style={[split.leftBody, { opacity: fadeAnim }]}>
+          <Text style={split.stepTag}>
+            {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+          </Text>
+          <Text style={split.headline}>{slide.headline}</Text>
+          <View style={split.divider} />
+          <PillIndicator total={total} index={index} onJump={onJump} />
+        </Animated.View>
+
+        <View style={split.leftFooter}>
+          <View style={split.ctaRow}>
+            {index > 0 && (
+              <TouchableOpacity
+                style={split.backBtn}
+                onPress={onBack}
+                accessibilityLabel="Go back"
+              >
+                <Text style={split.backIcon}>←</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={split.nextBtn} onPress={onNext} activeOpacity={0.85}>
+              <Text style={split.nextBtnText}>{ctaLabel}</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity onPress={onSkip} activeOpacity={0.7}>
+            <Text style={split.secondaryText}>
+              {index === 0 ? "Already have an account? Log in" : "Skip for now"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── Right: dark hero panel ── */}
+      <View style={split.rightPanel}>
+        <View pointerEvents="none" style={split.glow} />
+
+        <Text style={split.rightTag}>{heroTag}</Text>
+
+        <Animated.View style={[split.quoteBlock, { opacity: fadeAnim }]}>
+          <Text style={split.quote}>{slide.body}</Text>
+        </Animated.View>
+
+        <Animated.View style={[split.imageCard, { opacity: fadeAnim }]}>
+          <Image source={slide.image} style={split.cardImage} resizeMode="contain" />
+        </Animated.View>
+      </View>
+    </View>
+  );
+}
+
+const split = StyleSheet.create({
+  root: { flex: 1, flexDirection: "row" },
+
+  // ── Left panel ──
+  leftPanel: {
+    flex: 0.46,
+    backgroundColor: CREAM,
+    paddingHorizontal: 64,
+    paddingVertical: 56,
+    justifyContent: "space-between",
+  },
+  leftHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  headerLogo: { width: 28, height: 28 },
+  headerName: {
+    fontFamily: Fonts?.serifBold ?? "serif",
+    fontSize: 18,
+    color: FOREST,
+    letterSpacing: -0.3,
+  },
+
+  leftBody: { maxWidth: 420 },
+  stepTag: {
+    fontFamily: Fonts?.sans ?? "sans-serif",
+    fontSize: 13,
+    letterSpacing: 3,
+    color: GOLD,
+    textTransform: "uppercase",
+    marginBottom: 18,
+  },
+  headline: {
+    fontFamily: Fonts?.serifBold ?? "serif",
+    fontSize: 48,
+    lineHeight: 56,
+    color: FOREST,
+    letterSpacing: -0.5,
+  },
+  divider: { width: 48, height: 2, backgroundColor: GOLD, marginVertical: 28 },
+
+  leftFooter: { gap: 16 },
+  ctaRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  backBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderColor: FOREST + "26",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backIcon: { fontSize: 18, color: FOREST },
+  nextBtn: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 18,
+    alignItems: "center",
+    backgroundColor: FOREST,
+    ...Platform.select({
+      web: { backgroundImage: `linear-gradient(135deg, ${FOREST} 0%, ${FOREST_DARK} 100%)` },
+    }),
+  },
+  nextBtnText: {
+    fontFamily: Fonts?.sans ?? "sans-serif",
+    fontSize: 16,
+    fontWeight: "600",
+    color: CREAM,
+    letterSpacing: 0.2,
   },
   secondaryText: {
     fontFamily: Fonts?.sans ?? "sans-serif",
-    fontSize: 13,
+    fontSize: 14,
     color: SLATE,
+    textAlign: "center",
   },
+
+  // ── Right panel ──
+  rightPanel: {
+    flex: 0.54,
+    backgroundColor: FOREST,
+    ...Platform.select({
+      web: { backgroundImage: `linear-gradient(160deg, ${FOREST} 0%, ${FOREST_DARK} 100%)` },
+    }),
+    paddingHorizontal: 64,
+    paddingVertical: 56,
+    justifyContent: "space-between",
+    overflow: "hidden",
+    position: "relative",
+  },
+  // Soft radial highlight, purely decorative — gives the flat gradient some
+  // depth without needing an image asset or expo-linear-gradient.
+  glow: {
+    position: "absolute",
+    top: -140,
+    right: -140,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: GOLD + "14",
+  },
+  rightTag: {
+    fontFamily: Fonts?.sans ?? "sans-serif",
+    fontSize: 13,
+    letterSpacing: 3,
+    color: CREAM + "80",
+    textTransform: "uppercase",
+  },
+  quoteBlock: { maxWidth: 480 },
+  quote: {
+    fontFamily: Fonts?.serif ?? Fonts?.serifBold ?? "serif",
+    fontStyle: "italic",
+    fontSize: 34,
+    lineHeight: 46,
+    color: CREAM,
+    letterSpacing: -0.2,
+  },
+  imageCard: {
+    alignSelf: "flex-end",
+    width: 260,
+    height: 260,
+    borderRadius: 28,
+    backgroundColor: CREAM,
+    padding: 0,
+    transform: [{ rotate: "-3deg" }],
+    ...Platform.select({
+      web: { boxShadow: `0 24px 48px ${FOREST_DARK}55` },
+      default: { elevation: 8 },
+    }),
+  },
+  cardImage: { width: "100%", height: "100%" },
 });
