@@ -10,7 +10,7 @@ export function useOnboarding() {
     async function checkOnboarding() {
       try {
         const value = await AsyncStorage.getItem(ONBOARDING_KEY);
-        setHasOnboarded(value === "");
+        setHasOnboarded(value === "true");
       } catch (error) {
         setHasOnboarded(false);
       }
