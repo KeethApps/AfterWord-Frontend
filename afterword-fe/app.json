@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "afterword-fe",
-    "slug": "afterword-fe",
-    "version": "1.0.0",
+    "name": "afterword-beta",
+    "slug": "afterword-beta",
+    "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "afterwordfe",
@@ -18,7 +18,7 @@
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/foreground.png",
         "backgroundImage": "./assets/images/background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "monochromeImage": "./assets/images/monochrome.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -45,7 +45,7 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
     },
     "extra": {
       "router": {},
