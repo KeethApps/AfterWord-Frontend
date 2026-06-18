@@ -34,7 +34,7 @@ export default function HomeScreen() {
 
   return (
     <ScreenContainer padded={false}>
-      <AppHeader title="AfterWord" subtitle="" />
+      <AppHeader title="Home" subtitle="" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
         <GreetingHeader hasContent={true} />
         {isLoading ? (

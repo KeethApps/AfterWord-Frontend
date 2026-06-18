@@ -19,7 +19,7 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
   const { isSidebarCollapsed, toggleSidebar } = useLayoutStore();
 
 
-  const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
+  const APP_VERSION = Constants.expoConfig?.version ?? '2.1.0';
 
   // inside the component, alongside your other handlers
   const handleOpenGuides = () => {

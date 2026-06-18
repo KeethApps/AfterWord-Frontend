@@ -1,35 +1,20 @@
 import React from "react";
-import { Stack, Redirect } from "expo-router";
-import { useAuth } from "../../hooks/useAuth";
-import { useOnboarding } from "../../hooks/useOnboarding";
-import { View, ActivityIndicator } from "react-native";
+import { Stack } from "expo-router";
 import { Colors } from "../../constants/theme";
 
+// Auth + onboarding gating now lives entirely in the root layout's
+// Stack.Protected guards. By the time this layout mounts, the root has
+// already guaranteed session && hasOnboarded are both true — so this file
+// only needs to define the authenticated app's own internal stack.
 export default function AppLayout() {
-  const { session, loading } = useAuth();
-
-  const { hasOnboarded } = useOnboarding();
-
-  if (loading || hasOnboarded === null) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.cream }}>
-        <ActivityIndicator size="large" color={Colors.forest} />
-      </View>
-    );
-  }
-
-  // If no session, redirect to sign in
-  if (!session) {
-    return <Redirect href="/(auth)/sign-in" />;
-  }
-
-  // If session exists but user hasn't onboarded, redirect to onboarding
-  if (!hasOnboarded) {
-    return <Redirect href="/(onboarding)" />;
-  }
-
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "fade", contentStyle: { backgroundColor: Colors.cream } }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: "fade",
+        contentStyle: { backgroundColor: Colors.cream },
+      }}
+    >
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="book/[id]" />
       <Stack.Screen name="profile" />

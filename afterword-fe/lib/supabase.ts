@@ -5,7 +5,6 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
-console.log("LOADED SUPABASE.TS");
 // A dummy storage implementation for SSR/static generation on the web where window is undefined.
 const SSRStorage = {
   getItem: (key: string) => Promise.resolve(null),

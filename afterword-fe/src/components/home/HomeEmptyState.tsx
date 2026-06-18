@@ -25,12 +25,12 @@ export const HomeEmptyState: React.FC = () => {
           onPress={() => router.push("/upload")} 
           fullWidth
         />
-        <Button 
+        {/* <Button 
           label="Learn how it works" 
           variant="ghost" 
-          onPress={() => { /* Not implemented yet */ }} 
+          onPress={() => {}} 
           fullWidth
-        />
+        /> */}
       </View>
     </View>
   );
