@@ -25,13 +25,10 @@ export const AppHeader = ({ onAvatarPress, avatarUrl, className = '' }: AppHeade
       {/* Avatar Area */}
       <Pressable onPress={onAvatarPress}>
         {avatarUrl ? (
-          <Image 
-            source={{ uri: avatarUrl }} 
-            className="w-5 h-5 rounded-full border border-border"
-          />
+          <Image className="w-8 h-8 rounded-full border border-border" />
         ) : (
-          <View className="w-5 h-5 rounded-full bg-mist items-center justify-center border border-border">
-            <Ionicons name="person" size={20} color={Colors.slate} />
+          <View className="w-8 h-8 rounded-full bg-mist items-center justify-center border border-border">
+            <Ionicons name="person" size={14} color={Colors.slate} />
           </View>
         )}
       </Pressable>
