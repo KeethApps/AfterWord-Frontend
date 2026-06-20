@@ -118,7 +118,7 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
             {!isSidebarCollapsed && (
               <>
                 <View style={styles.userInfo}>
-                  <Text style={styles.userName} numberOfLines={1}>AfterWord Beta</Text>
+                  <Text style={styles.userName} numberOfLines={1}>AfterWord Preview</Text>
                   <Pressable onPress={handleOpenGuides} hitSlop={4}>
                     <Text style={styles.userMeta} numberOfLines={1}>
                       v{APP_VERSION} · <Text style={styles.guidesLink}>Learn More ↗</Text>

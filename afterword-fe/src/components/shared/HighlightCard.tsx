@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/theme';
 import { Card } from '../common/Card';
@@ -25,6 +25,21 @@ export const HighlightCard = ({ highlight, onShare, className = '' }: HighlightC
   const locationText = highlight.pageNumber 
     ? `Page ${highlight.pageNumber}` 
     : (highlight.location ? `Loc ${highlight.location}` : '');
+
+  const handleShare = async () => {
+    if (onShare) {
+      onShare();
+      return;
+    }
+    
+    try {
+      const bookTitle = highlight.book?.title || 'Unknown Book';
+      const bookAuthor = highlight.book?.author || 'Unknown Author';
+      await Share.share({
+        message: `"${highlight.highlightText}"\n\n— ${bookTitle}, ${bookAuthor}\n\n(powered by AfterWord)`,
+      });
+    } catch {}
+  };
 
   const notes = highlight.notes;
   const hasNotes = Array.isArray(notes) && notes.length > 0;
@@ -69,7 +84,7 @@ export const HighlightCard = ({ highlight, onShare, className = '' }: HighlightC
         </View>
 
         <Pressable 
-          onPress={onShare}
+          onPress={handleShare}
           className="w-10 h-10 rounded-full bg-mist items-center justify-center"
         >
           <Ionicons name="share-outline" size={20} color={Colors.forest} />

@@ -22,6 +22,7 @@ interface GraphNode {
   book_title: string;
   author: string;
   tag: string | null;
+  book_id?: string;
 }
 
 interface GraphEdge {
@@ -53,6 +54,7 @@ interface PositionedLink {
 
 interface KnowledgeGraphProps {
   onHighlightSelect: (id: string) => void;
+  onBookSelect?: (bookId: string) => void;
 }
 
 // 8 brand-aligned colors: greens, golds, creams
@@ -149,7 +151,7 @@ const runLayout = (
   return { nodes: positionedNodes, links: positionedLinks };
 };
 
-export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
+export function KnowledgeGraph({ onHighlightSelect, onBookSelect }: KnowledgeGraphProps) {
   const [containerWidth, setContainerWidth] = useState(340);
   const height = 300;
 
@@ -158,6 +160,11 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const initialDistance = useRef<number | null>(null);
+
+  // Touch/Tap tracking refs
+  const touchStartPos = useRef({ x: 0, y: 0 });
+  const touchStartLocal = useRef({ x: 0, y: 0 });
+  const touchStartTime = useRef(0);
 
   const [hoveredNode, setHoveredNode] = useState<PositionedNode | null>(null);
 
@@ -186,14 +193,37 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
     queryFn: async () => {
       const { data, error: rpcError } = await supabase.rpc('get_graph_edges');
       if (rpcError) throw rpcError;
-      return data as GraphData;
+
+      const rawData = data as GraphData;
+      if (rawData && rawData.nodes && rawData.nodes.length > 0) {
+        const highlightIds = rawData.nodes.map((n) => n.id);
+        const { data: highlightsWithBook, error: fetchError } = await supabase
+          .from('highlights')
+          .select('id, book_id')
+          .in('id', highlightIds);
+
+        if (!fetchError && highlightsWithBook) {
+          const bookIdMap = new Map(highlightsWithBook.map((h: any) => [h.id, h.book_id]));
+          rawData.nodes = rawData.nodes.map((n) => ({
+            ...n,
+            book_id: bookIdMap.get(n.id),
+          }));
+        }
+      }
+
+      return rawData;
     },
   });
 
   // Calculate layout once data is loaded and width is measured
   const { nodes, links, bookColors, uniqueBooks } = useMemo(() => {
     if (!graphRawData || !graphRawData.nodes || graphRawData.nodes.length < 5) {
-      return { nodes: [], links: [], bookColors: {}, uniqueBooks: [] };
+      return { 
+        nodes: [] as PositionedNode[], 
+        links: [] as PositionedLink[], 
+        bookColors: {} as Record<string, string>, 
+        uniqueBooks: [] as string[] 
+      };
     }
 
     const { nodes: pNodes, links: pLinks } = runLayout(
@@ -215,7 +245,44 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
       bookColors: colors,
       uniqueBooks: uBooks,
     };
-  }, [graphRawData, containerWidth]);
+  }, [graphRawData, containerWidth]) as {
+    nodes: PositionedNode[];
+    links: PositionedLink[];
+    bookColors: Record<string, string>;
+    uniqueBooks: string[];
+  };
+
+  const handleTap = (localX: number, localY: number) => {
+    let closestNode = null as PositionedNode | null;
+    let minDistance = Infinity;
+
+    (nodes as PositionedNode[]).forEach((node) => {
+      const screenX = node.x * transform.scale + transform.x;
+      const screenY = node.y * transform.scale + transform.y;
+      
+      const dx = localX - screenX;
+      const dy = localY - screenY;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestNode = node;
+      }
+    });
+
+    const maxTapDistance = closestNode ? Math.max((closestNode as PositionedNode).radius * transform.scale * 1.5, 24) : 24;
+
+    if (closestNode && minDistance <= maxTapDistance) {
+      setHoveredNode(closestNode);
+      if (Platform.OS === 'web') {
+        if (onBookSelect && (closestNode as PositionedNode).book_id) {
+          onBookSelect((closestNode as PositionedNode).book_id!);
+        }
+      }
+    } else {
+      setHoveredNode(null);
+    }
+  };
 
   // Adjust tooltip calculations to account for current zoom & pan transform
   const tooltipPosition = useMemo(() => {
@@ -248,6 +315,15 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
       x: touch.pageX - transform.x,
       y: touch.pageY - transform.y,
     };
+    touchStartPos.current = {
+      x: touch.pageX,
+      y: touch.pageY,
+    };
+    touchStartLocal.current = {
+      x: e.nativeEvent.locationX,
+      y: e.nativeEvent.locationY,
+    };
+    touchStartTime.current = Date.now();
     isDragging.current = true;
   };
 
@@ -282,9 +358,26 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
     }
   };
 
-  const onResponderRelease = () => {
+  const onResponderRelease = (e: any) => {
     isDragging.current = false;
     initialDistance.current = null;
+
+    // Check if this was a tap
+    const touches = e.nativeEvent.touches || [];
+    if (touches.length <= 1) {
+      const touch = e.nativeEvent.changedTouches?.[0] || e.nativeEvent;
+      if (touchStartPos.current.x !== 0 && touchStartPos.current.y !== 0) {
+        const dx = touch.pageX - touchStartPos.current.x;
+        const dy = touch.pageY - touchStartPos.current.y;
+        const dist = Math.hypot(dx, dy);
+        const elapsed = Date.now() - touchStartTime.current;
+
+        // If it's a single touch tap (moved less than 8px and released within 300ms)
+        if (dist < 8 && elapsed < 300) {
+          handleTap(touchStartLocal.current.x, touchStartLocal.current.y);
+        }
+      }
+    }
   };
 
   const handleWheel = (e: any) => {
@@ -416,7 +509,13 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
                     onMouseLeave: () => setHoveredNode(null),
                     style: { cursor: 'pointer' },
                   } as any)}
-                  onPress={() => onHighlightSelect(node.id)}
+                  onPress={() => {
+                    if (onBookSelect && node.book_id) {
+                      onBookSelect(node.book_id);
+                    } else {
+                      onHighlightSelect(node.id);
+                    }
+                  }}
                 />
               ))}
             </G>
@@ -448,8 +547,13 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
 
           {/* Tooltip Overlay */}
           {hoveredNode && tooltipPosition && (
-            <View
-              style={{
+            <Pressable
+              onPress={() => {
+                if (onBookSelect && hoveredNode.book_id) {
+                  onBookSelect(hoveredNode.book_id);
+                }
+              }}
+              style={({ pressed }) => ({
                 position: 'absolute',
                 left: tooltipPosition.x,
                 top: tooltipPosition.y,
@@ -465,7 +569,8 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
                 shadowRadius: 8,
                 elevation: 4,
                 zIndex: 50,
-              }}
+                opacity: pressed ? 0.85 : 1,
+              })}
             >
               <Text numberOfLines={3} ellipsizeMode="tail"
                 style={{ fontFamily: Fonts.serif, fontSize: 12, color: Colors.forest, fontStyle: 'italic', lineHeight: 18, marginBottom: 8 }}>
@@ -475,11 +580,18 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
                 style={{ fontFamily: Fonts.sansBold, fontSize: 10, color: Colors.slate, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 {hoveredNode.book_title}
               </Text>
-              <Text numberOfLines={1} ellipsizeMode="tail"
-                style={{ fontFamily: Fonts.sans, fontSize: 9, color: Colors.slate, marginTop: 2 }}>
-                {hoveredNode.author}
-              </Text>
-            </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                <Text numberOfLines={1} ellipsizeMode="tail"
+                  style={{ fontFamily: Fonts.sans, fontSize: 9, color: Colors.slate, flex: 1 }}>
+                  {hoveredNode.author}
+                </Text>
+                {hoveredNode.book_id && (
+                  <Text style={{ fontFamily: Fonts.sansBold, fontSize: 9, color: Colors.gold }}>
+                    View Book →
+                  </Text>
+                )}
+              </View>
+            </Pressable>
           )}
 
           {/* Book Color Legend */}
