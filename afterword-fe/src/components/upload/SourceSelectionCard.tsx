@@ -6,9 +6,12 @@ import {
   Pressable,
   Animated,
   Easing,
+  Image,
+  ImageSourcePropType,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,11 +24,13 @@ export type HighlightSource =
   | "readwise"
   | "other";
 
+
+  
 interface Source {
   key: HighlightSource;
   label: string;
   detail: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  logo: ImageSourcePropType;
 }
 
 interface SourceSelectionProps {
@@ -33,49 +38,48 @@ interface SourceSelectionProps {
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-
 const SOURCES: Source[] = [
   {
     key: "kindle",
     label: "Kindle (Device)",
     detail: "My Clippings.txt",
-    icon: "phone-portrait-outline",
+    logo: require("../../../assets/source_logos/kindle.png"),
   },
   {
     key: "kindle_html",
     label: "Kindle (App)",
     detail: "HTML notebook export",
-    icon: "document-text-outline",
+    logo: require("../../../assets/source_logos/kindle-app.png"),
   },
   {
     key: "koreader",
     label: "KOReader",
     detail: "My Clippings.txt",
-    icon: "reader-outline",
+    logo: require("../../../assets/source_logos/koreader.png"),
   },
   {
     key: "libby",
     label: "Libby",
     detail: "Reading Journey CSV export",
-    icon: "library-outline",
+    logo: require("../../../assets/source_logos/libby.png"),
   },
   {
     key: "kobo",
     label: "Kobo",
     detail: "My Clippings.txt",
-    icon: "book-outline",
+    logo: require("../../../assets/source_logos/kobo.png"),
   },
   {
     key: "readwise",
     label: "Readwise",
     detail: "Exported highlights.md",
-    icon: "bookmark-outline",
+    logo: require("../../../assets/source_logos/readwise.png"),
   },
   {
     key: "other",
     label: "Other",
     detail: "Choose a file",
-    icon: "document-outline",
+    logo: require("../../../assets/source_logos/other.png"),
   },
 ];
 
@@ -122,9 +126,13 @@ function SourceRow({
         ]}
       >
         {/* Grey square icon */}
-        <View style={styles.iconWrap}>
-          <Ionicons name={source.icon} size={20} color={Colors.slate} />
-        </View>
+    <View style={styles.iconWrap}>
+      <Image
+        source={source.logo}
+        style={styles.logo}
+        resizeMode="contain"
+      />
+    </View>
 
         {/* Label + detail */}
         <View style={styles.sourceInfo}>
@@ -252,13 +260,17 @@ const styles = StyleSheet.create({
   },
   // Light grey square icon badge
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "#EEEBE4",
+    width: 20,
+    height: 20,
+    borderRadius: 12,
+    backgroundColor: "#F6F4EF",
     alignItems: "center",
     justifyContent: "center",
   },
+  logo: {
+  width: 26,
+  height: 26,
+},
   sourceInfo: {
     flex: 1,
     gap: 3,
@@ -274,3 +286,14 @@ const styles = StyleSheet.create({
     color: Colors.slate,
   },
 });
+
+// iconWrap: {
+//   width: 44,
+//   height: 44,
+//   borderRadius: 12,
+//   backgroundColor: Colors.white,
+//   borderWidth: 1,
+//   borderColor: "#ECE7DE",
+//   alignItems: "center",
+//   justifyContent: "center",
+// },

@@ -27,10 +27,10 @@ export const AppHeader = ({ onAvatarPress, avatarUrl, className = '' }: AppHeade
         {avatarUrl ? (
           <Image 
             source={{ uri: avatarUrl }} 
-            className="w-10 h-10 rounded-full border border-border"
+            className="w-5 h-5 rounded-full border border-border"
           />
         ) : (
-          <View className="w-10 h-10 rounded-full bg-mist items-center justify-center border border-border">
+          <View className="w-5 h-5 rounded-full bg-mist items-center justify-center border border-border">
             <Ionicons name="person" size={20} color={Colors.slate} />
           </View>
         )}

@@ -334,11 +334,12 @@ function HelpSheetContent() {
 
 function WhatsNewSheetContent() {
   const releases = [
+
   {
     version: "2.1.0",
     data: "June 2026",
     badge: "Latest",
-    items: ["The Knowledge Map is here: a visual view of how ideas connect across your reading. We've also done backend work to get the app ready to scale as the beta grows. On the visual side, every crane illustration across AfterWord is now hand-drawn artwork instead of placeholder graphics."
+    items: ["The Knowledge Map is here: a visual view of how ideas connect across your reading. We've also done backend work to get the app ready to scale as the beta grows. On the visual side, every crane illustration across AfterWord is now hand-drawn artwork instead of placeholder graphics. NEW FORMAT SUPPORT: Kindle App Parsing now available!"
 ]
   },
     {
@@ -854,9 +855,9 @@ async function handleReportBug() {
             <Text style={styles.pageSubtitle}>Customize your experience</Text>
           </View>
 
-          <View style={styles.foxWrap}>
+          {/* <View style={styles.foxWrap}>
             <FolioFox variant="reading" size={64} />
-          </View>
+          </View> */}
         </View>
 
         <View style={styles.inner}>
@@ -880,13 +881,13 @@ async function handleReportBug() {
               muted
             />
             <RowDivider />
-            <ToggleRow
+            {/* <ToggleRow
               icon="sunny-outline"
               label="Daily Highlight"
               sublabel="Resurface a highlight each day"
               value={dailyReminder}
               onToggle={setDailyReminder}
-            />
+            /> */}
           </View>
 
           {/* ── Data ────────────────────────────────────────────────── */}
