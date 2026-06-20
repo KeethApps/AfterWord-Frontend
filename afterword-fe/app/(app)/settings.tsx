@@ -402,7 +402,7 @@ function AboutSheetContent() {
       <View style={sheetStyles.aboutHero}>
         <FolioFox variant="reading" size={72} />
         <Text style={sheetStyles.aboutAppName}>AfterWord</Text>
-        <Text style={sheetStyles.aboutVersion}>Version 1.4.2</Text>
+        <Text style={sheetStyles.aboutVersion}>Version 2.1.0</Text>
       </View>
 
       <Text style={sheetStyles.body}>
