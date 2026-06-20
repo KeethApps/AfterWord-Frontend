@@ -21,7 +21,7 @@ export const UploadInitialState: React.FC<UploadInitialStateProps> = ({ onPickFi
       >
         <FolioFox variant="desk" size={100} className="mb-4" />
         <Text className="font-sansBold text-base text-forest mb-1">Tap to choose your file</Text>
-        <Text className="font-sans text-xs text-slate">My Clippings.txt only</Text>
+        <Text className="font-sans text-xs text-slate"></Text>
       </Pressable>
     </View>
   );

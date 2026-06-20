@@ -14,6 +14,7 @@ import { Colors, Fonts, Spacing } from "../../../constants/theme";
 
 export type HighlightSource =
   | "kindle"
+  | "kindle_html"
   | "koreader"
   | "libby"
   | "kobo"
@@ -36,9 +37,15 @@ interface SourceSelectionProps {
 const SOURCES: Source[] = [
   {
     key: "kindle",
-    label: "Kindle",
+    label: "Kindle (Device)",
     detail: "My Clippings.txt",
     icon: "phone-portrait-outline",
+  },
+  {
+    key: "kindle_html",
+    label: "Kindle (App)",
+    detail: "HTML notebook export",
+    icon: "document-text-outline",
   },
   {
     key: "koreader",

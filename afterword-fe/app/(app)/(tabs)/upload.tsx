@@ -344,18 +344,37 @@ export default function UploadScreen() {
   async function handlePickFile() {
     try {
       const picked = await DocumentPicker.getDocumentAsync({
-        type: ["text/plain", "text/csv", "*/*"],
+        type: ["text/plain", "text/csv", "text/html", "*/*"],
         copyToCacheDirectory: true,
       });
 
       if (picked.canceled) return;
 
       const asset = picked.assets[0];
+      const filenameLower = asset.name.toLowerCase();
 
       const isLibby = selectedSource === "libby";
-      const validExt = isLibby ? asset.name.endsWith(".csv") : asset.name.endsWith(".txt");
+      const isKindleHtml = selectedSource === "kindle_html";
+      
+      let validExt = false;
+      if (isLibby) {
+        validExt = filenameLower.endsWith(".csv");
+      } else if (isKindleHtml) {
+        validExt = filenameLower.endsWith(".html") || filenameLower.endsWith(".htm");
+      } else {
+        validExt = filenameLower.endsWith(".txt");
+      }
+
       if (!validExt) {
-        setErrorMessage(isLibby ? "Please select a valid Libby CSV export file." : "Please select a valid My Clippings.txt file.");
+        let msg = "Please select a valid file.";
+        if (isLibby) {
+          msg = "Please select a valid Libby CSV export file.";
+        } else if (isKindleHtml) {
+          msg = "Please select a valid Kindle HTML export file (.html or .htm).";
+        } else if (selectedSource === "koreader" || selectedSource === "kindle") {
+          msg = "Please select a valid My Clippings.txt file.";
+        }
+        setErrorMessage(msg);
         setState("error");
         return;
       }
@@ -401,7 +420,7 @@ export default function UploadScreen() {
 
       // ── 2. Build a sanitized storage path ─────────────────────────────────
       const uuid = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      const fileExt = selectedSource === "libby" ? "csv" : "txt";
+      const fileExt = selectedSource === "libby" ? "csv" : selectedSource === "kindle_html" ? "html" : "txt";
       const storagePath = `clippings/${user.id}/${uuid}.${fileExt}`;
 
       // ── 3. Read file as base64 then convert to blob ────────────────────────
@@ -409,10 +428,15 @@ export default function UploadScreen() {
       const arrayBuffer = await response.arrayBuffer();
 
       // ── 4. Upload to Supabase Storage ─────────────────────────────────────
+      let contentType = "text/plain";
+      if (selectedSource === "libby") {
+        contentType = "text/csv";
+      }
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("clippings")
         .upload(storagePath, arrayBuffer, {
-          contentType: selectedSource === "libby" ? "text/csv" : "text/plain",
+          contentType,
         });
 
       console.log("UPLOAD DATA", uploadData);
@@ -437,7 +461,11 @@ export default function UploadScreen() {
           },
           body: JSON.stringify({
             file_path: storagePath,
-            source_type: selectedSource === "koreader" ? "KO_READER" : selectedSource === "libby" ? "LIBBY" : "KINDLE",
+            source_type: 
+              selectedSource === "koreader" ? "KO_READER" : 
+              selectedSource === "libby" ? "LIBBY" : 
+              selectedSource === "kindle_html" ? "KINDLE_HTML" : 
+              "KINDLE",
           }),
         }
       );
@@ -557,7 +585,7 @@ export default function UploadScreen() {
 )}
 
           {/* ── Coming Soon ───────────────────────────────────────────────── */}
-          {selectedSource && selectedSource !== "kindle" && selectedSource !== "koreader" && selectedSource !== "libby" && (
+          {selectedSource && selectedSource !== "kindle" && selectedSource !== "kindle_html" && selectedSource !== "koreader" && selectedSource !== "libby" && (
             <AnimatedPanel stateKey={`coming-soon-${selectedSource}`}>
               <Pressable onPress={() => setSelectedSource(null)} style={styles.backRow}>
                 <Ionicons name="chevron-back" size={20} color={Colors.forest} />
@@ -585,7 +613,7 @@ export default function UploadScreen() {
           )}
 
           {/* ── Kindle Upload Flow ────────────────────────────────────────── */}
-          {(selectedSource === "kindle" || selectedSource === "koreader" || selectedSource === "libby") && (
+          {(selectedSource === "kindle" || selectedSource === "kindle_html" || selectedSource === "koreader" || selectedSource === "libby") && (
             <AnimatedPanel stateKey={`upload-${selectedSource}-${state}`}>
               {state !== "idle" && (
                 <Pressable onPress={handleReset} style={styles.backRow}>
@@ -642,23 +670,41 @@ export default function UploadScreen() {
                             desc: "We'll parse, deduplicate, and save every highlight.",
                           },
                         ]
-                      : [
-                          {
-                            icon: "phone-portrait-outline" as const,
-                            label: "Connect your Kindle",
-                            desc: "Plug it in via USB or locate the file in Files.",
-                          },
-                          {
-                            icon: "document-text-outline" as const,
-                            label: 'Find "My Clippings.txt"',
-                            desc: 'It lives in the "documents" folder on your Kindle.',
-                          },
-                          {
-                            icon: "cloud-upload-outline" as const,
-                            label: "Upload here",
-                            desc: "We'll parse, deduplicate, and save every highlight.",
-                          },
-                        ]
+                      : selectedSource === "kindle_html"
+                        ? [
+                            {
+                              icon: "book-outline" as const,
+                              label: "Open Kindle App Notebook",
+                              desc: "Open the book in Kindle App, tap Notebook, and tap the Share icon.",
+                            },
+                            {
+                              icon: "share-outline" as const,
+                              label: "Export HTML notebook",
+                              desc: "Select Email or Export, then choose HTML format.",
+                            },
+                            {
+                              icon: "cloud-upload-outline" as const,
+                              label: "Upload the HTML file here",
+                              desc: "We'll parse all your color highlights, notes, and pages.",
+                            },
+                          ]
+                        : [
+                            {
+                              icon: "phone-portrait-outline" as const,
+                              label: "Connect your Kindle",
+                              desc: "Plug it in via USB or locate the file in Files.",
+                            },
+                            {
+                              icon: "document-text-outline" as const,
+                              label: 'Find "My Clippings.txt"',
+                              desc: 'It lives in the "documents" folder on your Kindle.',
+                            },
+                            {
+                              icon: "cloud-upload-outline" as const,
+                              label: "Upload here",
+                              desc: "We'll parse, deduplicate, and save every highlight.",
+                            },
+                          ]
                   ).map((step, i, arr) => (
                     <React.Fragment key={step.label}>
                       <View style={styles.howRow}>

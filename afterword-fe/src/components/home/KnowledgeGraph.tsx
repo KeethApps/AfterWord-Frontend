@@ -337,8 +337,8 @@ export function KnowledgeGraph({ onHighlightSelect }: KnowledgeGraphProps) {
       {/* Header — matches DailyHighlightCard */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <Ionicons name="git-network-outline" size={14} color={Colors.forest} />
-        <Text style={{ fontFamily: Fonts.sans, fontSize: 13, color: Colors.forest, fontWeight: '500', flex: 1 }}>
-          Knowledge Map
+        <Text style={{ fontFamily: Fonts.sans, fontSize: 11, color: Colors.forest, fontWeight: '600', letterSpacing: 1.2, flex: 1 }}>
+          KNOWLEDGE MAP
         </Text>
       </View>
       {/* <Text style={{ fontFamily: Fonts.serifBold, fontSize: 18, color: Colors.forest, lineHeight: 24, marginBottom: 4 }}>
