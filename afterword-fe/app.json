@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "afterword-beta",
-    "slug": "afterword-beta",
+    "name": "afterword-preview",
+    "slug": "afterword-preview",
     "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

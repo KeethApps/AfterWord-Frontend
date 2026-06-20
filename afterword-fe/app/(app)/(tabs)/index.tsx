@@ -16,6 +16,7 @@ import { AppHeader } from "../../../src/components/AppHeader";
 import { useBooks } from "../../../hooks/queries/books";
 import { useHighlights } from "../../../hooks/queries/highlights";
 import { useAllNotes } from "../../../hooks/queries/notes";
+import { useLibraryStats } from "@/hooks/queries/useStats";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function HomeScreen() {
   // Show content only if there are books or highlights
   const hasContent = (books?.length ?? 0) > 0 || (highlights?.length ?? 0) > 0 || (notes?.length ?? 0) > 0;
 
-  const authorCount = new Set((books || []).map(b => b.author)).size;
+  const { data: stats } = useLibraryStats();
 
   return (
     <ScreenContainer padded={false}>
@@ -52,15 +53,18 @@ export default function HomeScreen() {
                 <DailyHighlightCard />
               </View>
               <View style={isWide ? { flex: 1 } : { width: '100%' }}>
-                <KnowledgeGraph onHighlightSelect={(id) => router.push(`/highlights/${id}` as Href)} />
+                <KnowledgeGraph 
+                  onHighlightSelect={(id) => router.push(`/highlights/${id}` as Href)} 
+                  onBookSelect={(bookId) => router.push(`/book/${bookId}` as Href)}
+                />
               </View>
             </View>
 
             <LibraryStatsRow
-              bookCount={books?.length || 0}
-              highlightCount={highlights?.length || 0}
-              noteCount={notes?.length || 0}
-              authorCount={authorCount}
+              bookCount={stats?.books ?? 0}
+              highlightCount={stats?.highlights ?? 0}
+              noteCount={stats?.notes ?? 0}
+              authorCount={stats?.authors ?? 0}
               onViewAll={() => router.push("/library")}
             />
             

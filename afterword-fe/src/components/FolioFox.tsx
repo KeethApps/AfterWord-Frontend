@@ -37,7 +37,7 @@ const foxVariants: Record<FolioFoxVariant, ImageSourcePropType> = {
   sleeping:  require("../../assets/crane/crane-sleeping.png"),
   thinking:  require("../../assets/crane/crane-reading.png"),
   happy:     require("../../assets/crane/crane-default.png"),
-  sad:       require("../../assets/crane/crane-reading.png"),
+  sad:       require("../../assets/crane/crane-sad.png"),
   laptop:    require("../../assets/crane/crane-laptop.png"),
   ghost:     require("../../assets/crane/crane-reading.png"),
   secondary: require("../../assets/crane/crane-reading.png"),

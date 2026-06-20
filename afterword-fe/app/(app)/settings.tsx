@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   TextInput,
 } from "react-native";
+import { Link } from "expo-router";
 import { Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -333,34 +334,38 @@ function HelpSheetContent() {
 
 function WhatsNewSheetContent() {
   const releases = [
+
+  {
+    version: "2.1.0",
+    data: "June 2026",
+    badge: "Latest",
+    items: ["The Knowledge Map is here: a visual view of how ideas connect across your reading. We've also done backend work to get the app ready to scale as the beta grows. On the visual side, every crane illustration across AfterWord is now hand-drawn artwork instead of placeholder graphics. NEW FORMAT SUPPORT: Kindle App Parsing now available!"
+]
+  },
     {
-      version: "1.4.2",
+      version: "2.0.0",
       date: "June 2026",
-      badge: "Latest",
+      badge: null,
       items: [
-        "Daily Highlight resurfacing now weights your favourites",
-        "Smoother upload flow with better progress feedback",
-        "Fixed a bug where long book titles clipped on the highlights card",
+"You can now import highlights from KOReader and Libby, in addition to Kindle. We've also added book matching, so you can correct or update a book's edition by searching title, author, or ISBN if AfterWord pulls in the wrong metadata."
+
       ],
     },
     {
-      version: "1.4.0",
+      version: "2.0.0",
       date: "May 2026",
       badge: null,
       items: [
-        "Redesigned Search with instant full-text results",
-        "Favourites strip on the highlights screen",
-        "New Settings page (you're looking at it!)",
-      ],
+"Every core screen has been rebuilt: Home, Library, Highlights, and Search now have a consistent look and feel, and I built out a proper API to support them going forward. No new features this round, but the app should feel noticeably more polished and stable."
+],
     },
     {
       version: "1.3.0",
       date: "April 2026",
       badge: null,
       items: [
-        "Export your highlights as a CSV",
-        "Staggered animations on the library screen",
-        "Folio the Fox says hello 🦊",
+        "This update reworks how highlights are processed: imports now run as background ingestion jobs, and highlights are broken into chunks before embedding. The result is more consistent processing, especially for larger libraries, and a foundation that scales better as we add more import sources."
+
       ],
     },
   ];
@@ -397,20 +402,20 @@ function AboutSheetContent() {
       <View style={sheetStyles.aboutHero}>
         <FolioFox variant="reading" size={72} />
         <Text style={sheetStyles.aboutAppName}>AfterWord</Text>
-        <Text style={sheetStyles.aboutVersion}>Version 1.4.2</Text>
+        <Text style={sheetStyles.aboutVersion}>Version 2.1.0</Text>
       </View>
 
       <Text style={sheetStyles.body}>
-        AfterWord is a personal library for your Kindle highlights — a quiet
+        AfterWord is a personal library for all your highlights — a quiet
         place to revisit the ideas, sentences, and passages that stayed with
         you.
       </Text>
 
       <View style={[sheetStyles.divider, { marginVertical: Spacing.s20 }]} />
 
-      <Text style={sheetStyles.label}>Built with</Text>
+      <Text style={sheetStyles.label}>Built by</Text>
       <Text style={sheetStyles.body}>
-        Expo · React Native · Supabase · TypeScript
+        Keerthana Vegesna
       </Text>
 
       <View style={[sheetStyles.divider, { marginVertical: Spacing.s20 }]} />
@@ -850,9 +855,9 @@ async function handleReportBug() {
             <Text style={styles.pageSubtitle}>Customize your experience</Text>
           </View>
 
-          <View style={styles.foxWrap}>
+          {/* <View style={styles.foxWrap}>
             <FolioFox variant="reading" size={64} />
-          </View>
+          </View> */}
         </View>
 
         <View style={styles.inner}>
@@ -876,13 +881,13 @@ async function handleReportBug() {
               muted
             />
             <RowDivider />
-            <ToggleRow
+            {/* <ToggleRow
               icon="sunny-outline"
               label="Daily Highlight"
               sublabel="Resurface a highlight each day"
               value={dailyReminder}
               onToggle={setDailyReminder}
-            />
+            /> */}
           </View>
 
           {/* ── Data ────────────────────────────────────────────────── */}

@@ -218,7 +218,7 @@ export default function HighlightsScreen() {
 
   return (
     <ScreenContainer padded={false} scrollable={false}>
-      <AppHeader title="Highlights" />
+      <AppHeader title="My Highlights" />
 
       <View className="px-4 flex-1">
         <SearchBar

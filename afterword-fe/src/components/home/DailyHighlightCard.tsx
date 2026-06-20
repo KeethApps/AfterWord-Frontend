@@ -10,6 +10,7 @@ import {
   ImageBackground,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter, Href } from "expo-router";
 import { Colors, Fonts, Spacing } from "../../../constants/theme";
 import { useDailyHighlight } from "@/hooks/queries/useDailyHighlight";
 
@@ -17,6 +18,7 @@ import { useDailyHighlight } from "@/hooks/queries/useDailyHighlight";
 const CARD_BG = require("../../../assets/images/highlight-bg.avif");
 
 export const DailyHighlightCard: React.FC = () => {
+  const router = useRouter();
   const { highlight, loading, error, refresh } = useDailyHighlight();
 
   if (loading) {
@@ -32,7 +34,7 @@ export const DailyHighlightCard: React.FC = () => {
   async function handleShare() {
     try {
       await Share.share({
-        message: `"${highlight!.highlight_text}"\n\n— ${highlight!.book.title}, ${highlight!.book.author}`,
+        message: `"${highlight!.highlight_text}"\n\n— ${highlight!.book.title}, ${highlight!.book.author}\n\n(powered by AfterWord)`,
       });
     } catch {}
   }
@@ -120,6 +122,11 @@ export const DailyHighlightCard: React.FC = () => {
 
           <View style={styles.actions}>
             <Pressable
+              onPress={() => {
+                if (highlight?.book?.id) {
+                  router.push(`/book/${highlight.book.id}` as Href);
+                }
+              }}
               style={({ pressed }) => [styles.viewBtn, pressed && { opacity: 0.75 }]}
             >
               <Text style={styles.viewBtnText}>View in Library →</Text>

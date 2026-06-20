@@ -54,6 +54,7 @@ export default function SearchScreen() {
   const [quoteResults, setQuoteResults] = useState<QuoteResult[]>([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Load Book Results using our hook (it automatically caches and uses active session)
   const { data: bookResults = [], isLoading: loadingBooks } = useSearchBooks(debouncedQuery);
@@ -106,6 +107,7 @@ export default function SearchScreen() {
     const fetchQuotes = async () => {
       setLoadingQuotes(true);
       setHasSearched(false);
+      setSearchError(null);
       try {
         const { data, error } = await supabase.functions.invoke("search", {
           body: { query: debouncedQuery, limit: 10 },
@@ -114,6 +116,7 @@ export default function SearchScreen() {
         setQuoteResults(data?.results || []);
       } catch (err) {
         console.error("Vector Search error:", err);
+        setSearchError(err instanceof Error ? err.message : String(err));
         setQuoteResults([]);
       } finally {
         setLoadingQuotes(false);
@@ -170,6 +173,26 @@ export default function SearchScreen() {
         <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
           {isLoading && <ActivityIndicator size="large" color={Colors.forest} className="mt-12 mb-8" />}
           {renderRecentSearches()}
+        </ScrollView>
+      );
+    }
+
+    if (searchError) {
+      return (
+        <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+          <View 
+            className="p-4 rounded-lg my-4 flex-row items-center border"
+            style={{ 
+              backgroundColor: '#FEF2F2', 
+              borderColor: '#FECACA' 
+            }}
+          >
+            <Ionicons name="alert-circle-outline" size={20} color={Colors.danger} className="mr-3" />
+            <Text className="font-sans text-sm flex-1" style={{ color: Colors.danger }}>
+              Search failed: {searchError}
+            </Text>
+          </View>
+          {recentSearches.length > 0 && renderRecentSearches()}
         </ScrollView>
       );
     }

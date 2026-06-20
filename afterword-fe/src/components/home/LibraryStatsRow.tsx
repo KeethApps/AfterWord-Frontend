@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { SectionHeader } from "../../components/common/SectionHeader";
+import { useLibraryStats } from "@/hooks/queries/useStats";
 
 export interface LibraryStatsProps {
   bookCount: number;
@@ -16,7 +17,9 @@ export const LibraryStatsRow: React.FC<LibraryStatsProps> = ({
   noteCount,
   authorCount,
   onViewAll,
+  
 }) => (
+
   <View className="mb-8">
     <SectionHeader 
       title="Library Overview" 
