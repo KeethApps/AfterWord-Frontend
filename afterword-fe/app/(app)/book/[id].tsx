@@ -12,7 +12,7 @@ import {
   Alert,
   Image,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts } from "../../../constants/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +21,7 @@ import { BookCover } from "../../../src/components/shared/BookCover";
 import { HighlightCard } from "../../../src/components/shared/HighlightCard";
 import { HighlightWithBook } from "../../../types";
 import { useAuth } from "../../../hooks/useAuth";
+import { useDeleteBook } from "../../../hooks/queries/books";
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -79,6 +80,9 @@ export default function BookDetailsScreen() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const navigation = useNavigation();
+  const deleteBookMutation = useDeleteBook();
 
   const openMenu = () => {
     setIsMenuVisible(true);
@@ -149,6 +153,45 @@ export default function BookDetailsScreen() {
       Alert.alert("Update Error", err.message);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteBook = () => {
+    setIsMenuVisible(false);
+
+    const performDelete = async () => {
+      try {
+        await deleteBookMutation.mutateAsync(id);
+        router.replace("/(app)/(tabs)/library");
+      } catch (err: any) {
+        if (Platform.OS === 'web') {
+          window.alert("Error: " + (err.message || "Could not delete book"));
+        } else {
+          Alert.alert("Error", err.message || "Could not delete book");
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmDelete = window.confirm("Are you sure you want to delete this book? This will permanently delete the book and all of its highlights and notes.");
+      if (confirmDelete) {
+        performDelete();
+      }
+    } else {
+      setTimeout(() => {
+        Alert.alert(
+          "Delete Book",
+          "Are you sure you want to delete this book? This will permanently delete the book and all of its highlights and notes.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Delete",
+              style: "destructive",
+              onPress: performDelete,
+            },
+          ]
+        );
+      }, 400);
     }
   };
 
@@ -243,6 +286,19 @@ export default function BookDetailsScreen() {
   }, [id, user]);
 
 
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      pageRef.current = 0;
+      fetchHighlights(0);
+    });
+    return unsubscribe;
+  }, [navigation, fetchHighlights]);
+
+  const handleHighlightDelete = () => {
+    pageRef.current = 0;
+    fetchHighlights(0);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -411,6 +467,12 @@ export default function BookDetailsScreen() {
             >
               <Text style={{ fontFamily: Fonts!.sansBold, fontSize: 15, color: Colors.forest }}>Match book info</Text>
             </Pressable>
+            <Pressable
+              style={({ pressed }) => ({ padding: 16, backgroundColor: pressed ? Colors.mist : Colors.white, borderTopWidth: 1, borderTopColor: Colors.mist })}
+              onPress={handleDeleteBook}
+            >
+              <Text style={{ fontFamily: Fonts!.sansBold, fontSize: 15, color: Colors.danger }}>Delete book</Text>
+            </Pressable>
           </View>
         </Pressable>
       </Modal>
@@ -508,6 +570,7 @@ export default function BookDetailsScreen() {
           ) : null
         }
         renderItem={({ item }) => {
+          const isRecent = new Date().getTime() - new Date(item.createdAt).getTime() < 60000;
           const hwb: HighlightWithBook = {
             id: item.id,
             bookId: book.id,
@@ -537,11 +600,41 @@ export default function BookDetailsScreen() {
           };
           return (
             <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-              <HighlightCard highlight={hwb} />
+              {isRecent && (
+                <View style={{ backgroundColor: Colors.gold, paddingVertical: 2, paddingHorizontal: 8, borderRadius: 4, alignSelf: "flex-start", marginBottom: 6 }}>
+                  <Text style={{ fontFamily: Fonts!.sansBold, fontSize: 10, color: Colors.forest }}>NEW</Text>
+                </View>
+              )}
+              <HighlightCard highlight={hwb} onDeleteComplete={handleHighlightDelete} />
             </View>
           );
         }}
       />
+
+      {/* Floating Add Highlight Button */}
+      <Pressable
+        onPress={() => router.push({ pathname: "/book/[id]/add", params: { id } } as any)}
+        style={{
+          position: "absolute",
+          bottom: Math.max(insets.bottom + 16, 24),
+          right: 20,
+          backgroundColor: Colors.forest,
+          paddingVertical: 12,
+          paddingHorizontal: 20,
+          borderRadius: 24,
+          flexDirection: "row",
+          alignItems: "center",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          elevation: 6,
+          gap: 6
+        }}
+      >
+        <Ionicons name="add" size={20} color={Colors.white} />
+        <Text style={{ fontFamily: Fonts!.sansBold, color: Colors.white, fontSize: 15 }}>Add Highlight</Text>
+      </Pressable>
     </View>
   );
 }

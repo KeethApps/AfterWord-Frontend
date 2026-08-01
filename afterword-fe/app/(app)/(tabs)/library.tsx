@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ScreenContainer } from "../../../src/components/common/ScreenContainer";
 import { FilterPills } from "../../../src/components/common/FilterPills";
@@ -22,6 +23,7 @@ import {
 import { Pagination } from "../../../src/components/shared/Pagination";
 import { useBooks } from "../../../hooks/queries/books";
 import { useHighlights } from "../../../hooks/queries/highlights";
+import { useLibraryStats } from "../../../hooks/queries/useStats";
 import { Colors } from "../../../constants/theme";
 
 type TabType = "all" | "recent" | "highlighted" | "genres";
@@ -30,6 +32,7 @@ const PAGE_SIZE = 10;
 
 export default function LibraryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Queries
   const { data: books, isLoading: loadingBooks } = useBooks();
@@ -43,9 +46,10 @@ export default function LibraryScreen() {
 
   const isLoading = loadingBooks || loadingHighlights;
 
-  // Aggregate stats
-  const totalBooks = books?.length || 0;
-  const totalHighlights = highlights?.length || 0;
+  // Aggregate stats using useLibraryStats to avoid pagination limits
+  const { data: stats } = useLibraryStats();
+  const totalBooks = stats?.books || 0;
+  const totalHighlights = stats?.highlights || 0;
 
   // Compute highlights per book
   const highlightsPerBook = useMemo(() => {
@@ -207,6 +211,30 @@ export default function LibraryScreen() {
           />
         )}
       </View>
+
+      {/* Floating Action Button to Add Book + Highlight */}
+      <Pressable
+        onPress={() => router.push("/book/add" as any)}
+        style={({ pressed }) => ({
+          position: "absolute",
+          bottom: Math.max(insets.bottom + 16, 24),
+          right: 20,
+          backgroundColor: Colors.forest,
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          elevation: 6,
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Ionicons name="add" size={28} color={Colors.white} />
+      </Pressable>
     </ScreenContainer>
   );
 }

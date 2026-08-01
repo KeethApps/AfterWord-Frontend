@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { Book } from '../../types';
 import { useAuth } from '../useAuth';
@@ -109,5 +109,27 @@ export function useSearchBooks(query: string) {
       }));
     },
     enabled: !!query && !!userId,
+  });
+}
+
+export function useDeleteBook() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (bookId: string) => {
+      const { error } = await supabase
+        .from('books')
+        .delete()
+        .eq('id', bookId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, bookId) => {
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['book', bookId] });
+      queryClient.invalidateQueries({ queryKey: ['library_stats'] });
+      queryClient.invalidateQueries({ queryKey: ['highlights'] });
+    },
   });
 }

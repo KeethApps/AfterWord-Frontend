@@ -579,10 +579,54 @@ export default function UploadScreen() {
 
           {/* ── Source Selection ─────────────────────────────────────────── */}
           {!selectedSource && (
-  <AnimatedPanel stateKey="source-select">
-    <SourceSelection onSelect={(src) => setSelectedSource(src)} />
-  </AnimatedPanel>
-)}
+            <AnimatedPanel stateKey="source-select">
+              <SourceSelection onSelect={(src) => setSelectedSource(src)} />
+              
+              <View style={{ marginTop: 24 }}>
+                <Text style={styles.sectionLabel}>Or capture a highlight manually</Text>
+                <Pressable
+                  onPress={() => router.push("/book/add" as any)}
+                  style={({ pressed }) => [
+                    {
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: Colors.white,
+                      borderRadius: 14,
+                      paddingHorizontal: 16,
+                      paddingVertical: 16,
+                      gap: 14,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 4,
+                      elevation: 1,
+                      marginTop: 10,
+                      borderColor: Colors.border,
+                      borderWidth: 1,
+                      borderStyle: 'dashed',
+                      opacity: pressed ? 0.75 : 1
+                    }
+                  ]}
+                >
+                  <View style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    backgroundColor: Colors.mist,
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}>
+                    <Ionicons name="create-outline" size={16} color={Colors.forest} />
+                  </View>
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={{ fontFamily: Fonts.sansBold, fontSize: 15, color: Colors.forest }}>Add New Book + Highlight</Text>
+                    <Text style={{ fontFamily: Fonts.sans, fontSize: 13, color: Colors.slate }}>Create a highlight for a book not in your library</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.slate} />
+                </Pressable>
+              </View>
+            </AnimatedPanel>
+          )}
 
           {/* ── Coming Soon ───────────────────────────────────────────────── */}
           {selectedSource && selectedSource !== "kindle" && selectedSource !== "kindle_html" && selectedSource !== "koreader" && selectedSource !== "libby" && (
