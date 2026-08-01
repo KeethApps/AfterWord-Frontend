@@ -293,7 +293,6 @@ export default function SearchScreen() {
           value={query}
           onChangeText={setQuery}
           placeholder="Search concepts and ideas..."
-          rightIcon="mic-outline"
           className="mb-2"
         />
         {renderBody()}

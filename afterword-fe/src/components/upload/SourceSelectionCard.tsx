@@ -57,12 +57,7 @@ const SOURCES: Source[] = [
     detail: "My Clippings.txt",
     logo: require("../../../assets/source_logos/koreader.png"),
   },
-  {
-    key: "libby",
-    label: "Libby",
-    detail: "Reading Journey CSV export",
-    logo: require("../../../assets/source_logos/libby.png"),
-  },
+
   {
     key: "kobo",
     label: "Kobo",

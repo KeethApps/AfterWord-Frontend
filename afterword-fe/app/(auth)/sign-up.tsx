@@ -387,6 +387,7 @@ logoTextContainer: {
     backgroundColor: Colors.forest,
     borderRadius: Radius.s8,
     height: 50,
+    width: "100%",
     alignItems: "center",
     justifyContent: "center",
     marginTop: Spacing.s8,
@@ -401,7 +402,7 @@ logoTextContainer: {
   primaryBtnText: {
     fontFamily: Fonts?.sansBold ?? "sans-serif",
     fontSize: 16,
-    color: Colors.white,
+    color: "#FFFFFF",
     letterSpacing: 0.3,
   },
 

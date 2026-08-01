@@ -58,27 +58,28 @@ function BottomSheet({ visible, onClose, children }: {
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      transparent
-      statusBarTranslucent        // ← key for Android: modal covers the status bar properly
+      presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={sheet.overlay}>
-        <Pressable style={sheet.backdrop} onPress={onClose} />
-        <View style={sheet.container}>
-          <View style={sheet.handle} />
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={sheet.scroll}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: 40 }}
-          >
-            {children}
-          </ScrollView>
+      <View style={[sheet.overlay, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
+        <View style={sheet.header}>
+          <Pressable onPress={onClose} style={sheet.closeBtn}>
+            <Ionicons name="close" size={24} color={Colors.forest} />
+          </Pressable>
         </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={sheet.scroll}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingHorizontal: Spacing.s20, paddingBottom: 60 }}
+        >
+          {children}
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -87,27 +88,16 @@ function BottomSheet({ visible, onClose, children }: {
 const sheet = StyleSheet.create({
   overlay: {
     flex: 1,
+    backgroundColor: Colors.cream,
+  },
+  header: {
+    flexDirection: "row",
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.35)",
+    paddingHorizontal: Spacing.s16,
+    paddingVertical: Spacing.s12,
   },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  container: {
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: Spacing.s20,
-    paddingTop: Spacing.s12,
-    maxHeight: "80%",
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.border,
-    alignSelf: "center",
-    marginBottom: Spacing.s16,
+  closeBtn: {
+    padding: Spacing.s4,
   },
   scroll: {
     flex: 1,
