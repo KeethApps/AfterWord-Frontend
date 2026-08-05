@@ -21,7 +21,6 @@ Currently supported imports include:
 * Kindle MyClippings.txt
 * Kindle App HTML Exports
 * KOReader Clippings.txt
-* Libby CSV Exports
 
 Working on adding:
 * Apple Books
