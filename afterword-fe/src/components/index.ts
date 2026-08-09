@@ -23,7 +23,7 @@ export { SearchEmptyState } from "./search/SearchEmptyState";
 export { TopResultCard } from "./search/TopResultCard";
 export { BookResultRow } from "./search/BookResultRow";
 export { SearchResultsList } from "./search/SearchResultsList";
-export { SearchFilterSheet } from "./search/SearchFilterSheet";
+export { SearchFilters, SearchSort } from "./search/SearchFilterSheet";
 export { NoResultsState } from "./search/NoResultsState";
 
 // ─── Domain: Upload ──────────────────────────────────────────────────────────

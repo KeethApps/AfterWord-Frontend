@@ -1,36 +1,63 @@
-# Application Features
+# Application Features & Functionality
 
-The AfterWord frontend is designed to seamlessly integrate with your reading life, allowing you to ingest, store, search, and resurface your book highlights and notes.
+The AfterWord frontend provides a personal knowledge management workspace for readers to capture, organize, search, and resurface book highlights and notes.
+
+---
 
 ## 1. Home / Dashboard (`/app/(app)/(tabs)/index.tsx`)
-The central hub for the user. 
-- Displays a summary of the user's reading activity.
-- May feature recently added books or dynamically resurfaced highlights to help with spaced repetition and retention.
+- **Reading Activity Summary**: Overview of total books, highlights, and notes stored in the user's living library.
+- **Resurfaced Highlight**: Spaced-repetition feature displaying a resurfaced highlight to boost retention.
+- **Knowledge Map**: Interactive visualization (`KnowledgeGraph.tsx`) displaying connections between books, authors, tags, and themes.
 
-## 2. Highlights Feed (`/app/(app)/(tabs)/highlights.tsx`)
-A dedicated feed for browsing individual highlights and personal notes.
-- Users can scroll through their imported highlights.
-- Support for inline editing of notes or highlights.
-- Deleting or managing specific highlights.
+---
 
-## 3. Library (`/app/(app)/(tabs)/library.tsx`)
-The collection of all books the user has uploaded highlights for.
-- Displays book covers and metadata (enriched by the backend via Open Library).
-- Users can tap into a book to see all associated highlights and notes specific to that title.
+## 2. Library & Book Management (`/app/(app)/(tabs)/library.tsx` & `/app/(app)/book/`)
+- **Book Catalog**: Grid and list views of user books with cover images, author info, and highlight counts.
+- **Book Details Screen (`/app/(app)/book/[id].tsx`)**:
+  - Displays book details, publisher info, publication year, and description.
+  - Lists all highlights and notes associated with the book.
+  - **Open Library Matching**: Search and match book metadata against Open Library via the `match-book` Edge Function.
+  - **Book Deletion**: Option to permanently delete a book and cascade delete its highlights/notes via the `manage-book` Edge Function.
+- **New Book & Highlight Creation (`/app/(app)/book/add.tsx`)**:
+  - Form to manually add a new book title, author, highlight text, and personal note.
+  - Submits via `manage-highlight` / `manage-book` Edge Functions and triggers background Open Library metadata enrichment.
 
-## 4. Semantic Search (`/app/(app)/(tabs)/search.tsx`)
-A powerful, AI-driven search experience.
-- Allows users to search their highlights conceptually rather than just by exact keyword matches.
-- Integrates with the backend's Supabase Edge AI (`gte-small` embeddings) to return semantically relevant highlights and notes based on the user's query.
+---
 
-## 5. Upload & Ingestion (`/app/(app)/(tabs)/upload.tsx`)
-The gateway for importing data into AfterWord.
-- Supports picking and uploading files (like `My Clippings.txt` from a Kindle) via `expo-document-picker`.
-- Communicates with the backend ingestion pipeline to chunk the file, extract highlights, and generate AI embeddings asynchronously.
-- Displays progress or status of the ingestion job.
+## 3. Highlights & Notes Feed (`/app/(app)/(tabs)/highlights.tsx`)
+- Dedicated scrolling feed for browsing all highlights across books.
+- Filtering by search queries, favorite status, and tags.
+- Detailed highlight card (`HighlightCard.tsx`) supporting tag editing (`ManageTagsSheet.tsx`), favoriting, sharing, and deletion via `manage-highlight`.
 
-## 6. Profile & Settings (`/app/(app)/profile.tsx` & `settings.tsx`)
-User management and application preferences.
-- **Account**: Options for signing out or deleting the account entirely (handled securely by backend edge functions).
-- **Appearance**: Toggling application themes (Light/Dark).
-- **Onboarding**: Re-triggering the `(onboarding)` flow if necessary.
+---
+
+## 4. Shareable Highlight Cards (`ShareableHighlightCard.tsx` & `ShareHighlightModal.tsx`)
+- **Client-Only Image Generation**: Turn any highlight into a shareable image card rendered with `react-native-view-shot` without any database mutations.
+- **Curated Backgrounds**: Cycle through bundled background themes (`SHARE_BACKGROUNDS`), auto-assigned per highlight ID.
+- **Aspect Ratio Formats**: Toggle between `Story (9:16)` for Instagram/Snapchat and `Square (1:1)` for feed posts.
+- **Native Export**: Share directly via the OS share sheet (`expo-sharing`) or save to device photos (`expo-media-library`).
+
+---
+
+## 5. Collections & Tagging (`/app/(app)/(tabs)/collections.tsx`)
+- Organize highlights into custom tags and subject collections.
+- Enables cross-book thematic research and note organization.
+
+---
+
+## 6. Semantic Search (`/app/(app)/(tabs)/search.tsx`)
+- **AI-Powered Concept Search**: Searches highlights conceptually using vector embeddings generated by the backend `gte-small` model (`search` & `search-v2` Edge Functions).
+- Hybrid keyword + vector ranking for precise retrieval.
+
+---
+
+## 7. Import & Clipping Ingestion (`/app/(app)/(tabs)/upload.tsx`)
+- Import Kindle `My Clippings.txt` export files using `expo-document-picker`.
+- Communicates with the backend ingestion pipeline (`process-highlights`) to parse, chunk, and vectorize clippings asynchronously.
+- Subscribes via Supabase Realtime to `ingestion_jobs` to display real-time progress.
+
+---
+
+## 8. Account & Settings (`/app/(app)/settings.tsx` & `profile.tsx`)
+- Account management, sign out, and full account deletion (`delete-account` Edge Function).
+- Spaced repetition notification settings and theme customization.

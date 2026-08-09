@@ -3,17 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   Animated,
   Easing,
   ActivityIndicator,
   FlatList,
-  Modal,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../../hooks/useAuth";
 
-import { Colors, Fonts, Spacing } from "../../../constants/theme";
+import { Colors } from "../../../constants/theme";
 import { AppHeader } from "../../../src/components/AppHeader";
 import { HighlightCard } from "../../../src/components/shared/HighlightCard";
 import { SearchBar } from "../../../src/components/shared/SearchBar";
@@ -21,19 +18,20 @@ import { ScreenContainer } from "../../../src/components/common/ScreenContainer"
 import { FilterPills } from "../../../src/components/common/FilterPills";
 import { supabase } from "../../../lib/supabase";
 import {
-  HighlightsEmptyState, 
-  HighlightsFilterSheet 
+  HighlightsEmptyState,
+  HighlightsFilters,
+  HighlightsSort,
 } from "../../../src/components/highlights";
 import { Pagination } from "@/src/components/shared/Pagination";
 
-import { Note } from "../../../types";
+import { Note, Tag } from "../../../types";
 
 const PAGE_SIZE = 10;
 
 const HIGHLIGHT_TABS = [
   { label: "All", value: "All" },
   { label: "Notes", value: "Notes" },
-  { label: "Books", value: "Books" },
+  { label: "Favourites", value: "Favourites" },
 ];
 
 type Highlight = {
@@ -42,6 +40,8 @@ type Highlight = {
   pageNumber: number | null;
   location: string | null;
   createdAt: string;
+  isFavorite?: boolean;
+  tags?: Tag[];
   notes?: Note[];
   book: {
     id: string;
@@ -85,6 +85,8 @@ function FadeInItem({ index, children }: { index: number; children: React.ReactN
   );
 }
 
+// ── Main Screen ─────────────────────────────────────────────────────────────
+
 export default function HighlightsScreen() {
   const { user } = useAuth();
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -93,13 +95,17 @@ export default function HighlightsScreen() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
-  
+
   // UI State
   const [activeTab, setActiveTab] = useState("All");
-  const [activeSort, setActiveSort] = useState("Most Recent");
+  const [activeSort, setActiveSort] = useState<HighlightsSort>("Most Recent");
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  // "Favourites" tab maps to favoritesOnly filter
+  const favoritesOnly = activeTab === "Favourites";
 
   const fetchHighlights = useCallback(async (currentPage: number) => {
     if (!user) {
@@ -114,11 +120,19 @@ export default function HighlightsScreen() {
       const to = from + PAGE_SIZE - 1;
 
       const isNotesTab = activeTab === "Notes";
+      const hasTagFilter = filterTagIds.length > 0;
 
       let dbQuery = supabase.from("highlights")
-        .select(isNotesTab ? 'id, notes!inner(id)' : '*', { count: "exact", head: true })
+        .select(
+          isNotesTab
+            ? 'id, notes!inner(id)'
+            : hasTagFilter
+            ? 'id, highlight_tags!inner(tag_id)'
+            : 'id',
+          { count: "exact", head: true }
+        )
         .eq('user_id', user.id);
-      
+
       let dataQuery = supabase.from("highlights")
         .select(`
           id,
@@ -126,6 +140,7 @@ export default function HighlightsScreen() {
           page_number,
           location,
           created_at,
+          is_favorite,
           notes${isNotesTab ? '!inner' : ''} ( id, content, highlight_id, user_id, created_at, updated_at ),
           books (
             id,
@@ -133,35 +148,30 @@ export default function HighlightsScreen() {
             author,
             cover_image_url,
             isbn
-          )
+          ),
+          highlight_tags${hasTagFilter ? '!inner' : ''} ( tag_id, tags ( id, name, normalized_name, created_at ) )
         `)
         .eq('user_id', user.id)
         .range(from, to);
 
-
-
-
-      if (activeSort === "Oldest") {
-        dataQuery = dataQuery.order("created_at", { ascending: true });
-      } else if (activeSort === "Book (A-Z)") {
-        // Fallback to sorting by created_at since foreign table sorting is complex in simple queries,
-        // but we'll try to order by books.title if supported.
-        dataQuery = dataQuery.order("books(title)", { ascending: true } as any);
-      } else if (activeSort === "Book (Z-A)") {
-        dataQuery = dataQuery.order("books(title)", { ascending: false } as any);
-      } else {
-        dataQuery = dataQuery.order("created_at", { ascending: false });
+      if (favoritesOnly) {
+        dbQuery = dbQuery.eq('is_favorite', true);
+        dataQuery = dataQuery.eq('is_favorite', true);
       }
+
+      dataQuery = dataQuery.order("created_at", { ascending: activeSort === "Oldest" });
 
       if (query) {
         dbQuery = dbQuery.ilike('highlight_text', `%${query}%`);
         dataQuery = dataQuery.ilike('highlight_text', `%${query}%`);
       }
 
-      const [{ count }, { data, error }] = await Promise.all([
-        dbQuery,
-        dataQuery,
-      ]);
+      if (hasTagFilter) {
+        dbQuery = (dbQuery as any).in('highlight_tags.tag_id', filterTagIds);
+        dataQuery = (dataQuery as any).in('highlight_tags.tag_id', filterTagIds);
+      }
+
+      const [{ count }, { data, error }] = await Promise.all([dbQuery, dataQuery]);
 
       if (error) {
         console.error("Highlights fetch error:", error);
@@ -173,6 +183,7 @@ export default function HighlightsScreen() {
           pageNumber: h.page_number ?? null,
           location: h.location ?? null,
           createdAt: h.created_at,
+          isFavorite: h.is_favorite ?? false,
           notes: (h.notes ?? []).map((n: any) => ({
             id: n.id,
             highlightId: n.highlight_id,
@@ -180,6 +191,13 @@ export default function HighlightsScreen() {
             content: n.content,
             createdAt: n.created_at,
             updatedAt: n.updated_at,
+          })),
+          tags: (h.highlight_tags ?? []).map((ht: any) => ht.tags).filter(Boolean).map((t: any) => ({
+            id: t.id,
+            userId: user.id,
+            name: t.name,
+            normalizedName: t.normalized_name,
+            createdAt: t.created_at,
           })),
           book: {
             id: h.books?.id ?? "",
@@ -197,7 +215,7 @@ export default function HighlightsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [query, activeTab, activeSort, user]);
+  }, [query, activeTab, activeSort, favoritesOnly, filterTagIds, user]);
 
 
   useEffect(() => {
@@ -205,30 +223,30 @@ export default function HighlightsScreen() {
     fetchHighlights(page);
   }, [page, fetchHighlights, user]);
 
-
   useEffect(() => {
     setPage(0);
-  }, [query, activeTab, activeSort]);
+  }, [query, activeTab, activeSort, filterTagIds]);
 
   function goToPage(p: number) {
     setPage(p);
   }
 
-  // ── Render ────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <ScreenContainer padded={false} scrollable={false}>
       <AppHeader title="My Highlights" />
 
       <View className="px-4 flex-1">
+        {/* Search bar — no filter icon */}
         <SearchBar
           value={query}
           onChangeText={setQuery}
           placeholder="Search your highlights..."
-          onFilterPress={() => setIsFiltersOpen(true)}
           className="mb-4"
         />
 
+        {/* Tab pills: All | Notes | Favourites */}
         <View className="flex-row items-center mb-4">
           <FilterPills
             options={HIGHLIGHT_TABS}
@@ -236,6 +254,17 @@ export default function HighlightsScreen() {
             onSelect={setActiveTab}
           />
         </View>
+
+        {/* Sort & Filter — collapsible inline section */}
+        <HighlightsFilters
+          expanded={isFiltersOpen}
+          onToggleExpanded={() => setIsFiltersOpen((o) => !o)}
+          activeSort={activeSort}
+          onSortChange={setActiveSort}
+          selectedTagIds={filterTagIds}
+          onTagsChange={setFilterTagIds}
+        />
+
 
         {!loading && totalCount > 0 && (
           <Text className="font-sans text-sm text-slate mb-4">
@@ -248,7 +277,7 @@ export default function HighlightsScreen() {
         ) : highlights.length === 0 ? (
           <HighlightsEmptyState
             type={
-              query ? "search-empty" : 
+              query ? "search-empty" :
               activeTab === "Notes" ? "no-notes" : "empty"
             }
             onActionPress={() => setQuery("")}
@@ -261,27 +290,29 @@ export default function HighlightsScreen() {
             contentContainerStyle={{ paddingBottom: 60 }}
             renderItem={({ item, index }) => (
               <FadeInItem index={index}>
-                  <HighlightCard
-                    highlight={{
-                      ...item,
-                      bookId: item.book.id,
+                <HighlightCard
+                  highlight={{
+                    ...item,
+                    bookId: item.book.id,
+                    userId: "",
+                    embedding: null,
+                    embeddingModel: null,
+                    lastSurfacedAt: null,
+                    isFavorite: item.isFavorite ?? false,
+                    tags: item.tags ?? [],
+                    book: {
+                      ...item.book,
                       userId: "",
-                      embedding: null,
-                      embeddingModel: null,
-                      lastSurfacedAt: null,
-                      book: {
-                        ...item.book,
-                        userId: "",
-                        description: null,
-                        publisher: null,
-                        publishDate: null,
-                        enrichmentStatus: "pending",
-                        createdAt: "",
-                        updatedAt: "",
-                      }
-                    }}
-                    className="mb-4"
-                  />
+                      description: null,
+                      publisher: null,
+                      publishDate: null,
+                      enrichmentStatus: "pending",
+                      createdAt: "",
+                      updatedAt: "",
+                    }
+                  }}
+                  className="mb-4"
+                />
               </FadeInItem>
             )}
             ListFooterComponent={
@@ -296,29 +327,6 @@ export default function HighlightsScreen() {
           />
         )}
       </View>
-
-      <Modal
-        visible={isFiltersOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsFiltersOpen(false)}
-      >
-        <View className="flex-1 bg-black/40 justify-end">
-          <Pressable className="flex-1" onPress={() => setIsFiltersOpen(false)} />
-          <HighlightsFilterSheet 
-            currentSort={activeSort}
-            onClearAll={() => {
-              setActiveSort("Most Recent");
-              setIsFiltersOpen(false);
-            }} 
-            onApplyFilters={(sort) => {
-              setActiveSort(sort);
-              setIsFiltersOpen(false);
-            }} 
-            onClose={() => setIsFiltersOpen(false)}
-          />
-        </View>
-      </Modal>
     </ScreenContainer>
   );
 }

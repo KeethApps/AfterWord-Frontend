@@ -179,12 +179,12 @@ export function SourceSelection({ onSelect }: SourceSelectionProps) {
       >
         <Text style={styles.heroTitle}>Bring your highlights home.</Text>
         <Text style={styles.heroSubtitle}>
-          We'll import, organize, and keep them safe.
+          Select your source
         </Text>
       </Animated.View>
 
-      {/* Section label — plain text, matches mockup weight */}
-      <Text style={styles.sectionLabel}>Where are your highlights from?</Text>
+      {/* Section label — plain text, matches mockup weight
+      <Text style={styles.sectionLabel}>Where are your highlights from?</Text> */}
 
       {/* Individual card per source */}
       <View style={styles.list}>

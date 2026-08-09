@@ -12,7 +12,7 @@ export interface NavbarProps {
 const TABS = [
   { name: 'Home', path: '/', icon: 'home' },
   { name: 'Library', path: '/library', icon: 'library' },
-  { name: 'Search', path: '/search', icon: 'search' },
+  { name: 'Collections', path: '/collections', icon: 'albums' },
   { name: 'Highlights', path: '/highlights', icon: 'bookmark' },
   { name: 'Upload', path: '/upload', icon: 'cloud-upload' },
 ] as const;

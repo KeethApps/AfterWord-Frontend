@@ -55,7 +55,7 @@ export const NoResultsState: React.FC<NoResultsStateProps> = ({
     <View className="flex-1 mt-12">
       <EmptyState
         title="No results found"
-        description="Try a different keyword or check your spelling."
+        description="Try a different keyword or clear the filters to see more results!"
         foxVariant="rain"
       >
         <View className="mt-4 w-48 items-center">

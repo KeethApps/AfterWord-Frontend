@@ -8,6 +8,7 @@ import {
   DailyHighlightCard, 
   LibraryStatsRow, 
   RecentlyUploadedRow, 
+  RecentHighlightsRow,
   HomeEmptyState,
   HomeSearchBar,
   KnowledgeGraph
@@ -69,6 +70,7 @@ export default function HomeScreen() {
             />
             
             <RecentlyUploadedRow />
+            <RecentHighlightsRow />
           </>
         ) : (
           <HomeEmptyState />

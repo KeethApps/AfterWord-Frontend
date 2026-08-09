@@ -85,14 +85,14 @@ export function useDailyHighlight(): UseDailyHighlightResult {
     }
   }
 
-  // // Update last_surfaced_at so this highlight goes into cooldown
-  // async function markSurfaced(id: string) {
-  //   await supabase
-  //     .from("highlights")
-  //     .update({ last_surfaced_at: new Date().toISOString() })
-  //     .eq("id", id);
-  //   // Non-critical — don't throw if this fails
-  // }
+  // Update last_surfaced_at via manage-highlight Edge Function
+  async function markSurfaced(id: string) {
+    try {
+      await supabase.functions.invoke("manage-highlight", {
+        body: { action: "mark_surfaced", highlight_id: id },
+      });
+    } catch {}
+  }
 
   React.useEffect(() => {
     fetchHighlight();

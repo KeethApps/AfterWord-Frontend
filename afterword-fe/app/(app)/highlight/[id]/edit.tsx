@@ -15,6 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Fonts } from "../../../../constants/theme";
 import { supabase } from "../../../../lib/supabase";
+import { TagPicker } from "../../../../src/components/common/TagPicker";
+import { useHighlightTagIds } from "../../../../hooks/queries/tags";
 
 export default function EditHighlightScreen() {
   const { id: highlightId } = useLocalSearchParams<{ id: string }>();
@@ -25,10 +27,24 @@ export default function EditHighlightScreen() {
   const [personalNote, setPersonalNote] = useState("");
   const [pageNumber, setPageNumber] = useState("");
   const [bookId, setBookId] = useState<string | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Tags state: initialised from DB, then managed locally until Save
+  const { data: initialTagIds = [] } = useHighlightTagIds(highlightId ?? '');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const tagsInitialised = useRef(false);
+
+  // Seed tag IDs once the DB query resolves
+  useEffect(() => {
+    if (!tagsInitialised.current && initialTagIds.length >= 0) {
+      setSelectedTagIds(initialTagIds);
+      tagsInitialised.current = true;
+    }
+  }, [initialTagIds]);
 
   const noteInputRef = useRef<TextInput>(null);
 
@@ -40,7 +56,7 @@ export default function EditHighlightScreen() {
         setLoading(true);
         const { data, error } = await supabase
           .from("highlights")
-          .select("id, highlight_text, page_number, book_id, notes(id, content)")
+          .select("id, highlight_text, page_number, book_id, is_favorite, notes(id, content)")
           .eq("id", highlightId)
           .maybeSingle();
 
@@ -53,11 +69,12 @@ export default function EditHighlightScreen() {
 
         setHighlightText(data.highlight_text);
         setBookId(data.book_id);
+        setIsFavorite(data.is_favorite ?? false);
         if (data.page_number) {
           setPageNumber(String(data.page_number));
         }
 
-        const noteObj = data.notes?.[0];
+        const noteObj = (data.notes as any[])?.[0];
         if (noteObj) {
           setPersonalNote(noteObj.content);
         }
@@ -97,6 +114,8 @@ export default function EditHighlightScreen() {
             highlight_text: highlightText.trim(),
             personal_note: personalNote.trim() || undefined,
             page_number: pageNumber.trim() ? parseInt(pageNumber.trim(), 10) : undefined,
+            is_favorite: isFavorite,
+            tag_ids: selectedTagIds,
           }),
         }
       );
@@ -238,7 +257,7 @@ export default function EditHighlightScreen() {
             marginBottom: 24,
             padding: 0,
           }}
-          placeholder="“Type or paste highlight here...”"
+          placeholder={`\u201cType or paste highlight here...\u201d`}
           placeholderTextColor={Colors.slate}
           multiline
           value={highlightText}
@@ -248,6 +267,26 @@ export default function EditHighlightScreen() {
         />
 
         <View style={{ height: 1, backgroundColor: Colors.border, marginBottom: 24 }} />
+
+        {/* Favorite Toggle */}
+        <Pressable
+          onPress={() => setIsFavorite(!isFavorite)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 20,
+            gap: 10,
+          }}
+        >
+          <Ionicons
+            name={isFavorite ? "heart" : "heart-outline"}
+            size={22}
+            color={isFavorite ? Colors.danger : Colors.slate}
+          />
+          <Text style={{ fontFamily: Fonts!.sans, fontSize: 15, color: isFavorite ? Colors.danger : Colors.slate }}>
+            {isFavorite ? "Saved as Favorite" : "Add to Favorites"}
+          </Text>
+        </Pressable>
 
         {/* Page Number Field */}
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20, gap: 12 }}>
@@ -276,7 +315,7 @@ export default function EditHighlightScreen() {
         </View>
 
         {/* Note Field */}
-        <View style={{ marginBottom: 32 }}>
+        <View style={{ marginBottom: 24 }}>
           <Text style={{ fontFamily: Fonts!.sansBold, fontSize: 14, color: Colors.forest, marginBottom: 8 }}>
             Personal Note
           </Text>
@@ -300,6 +339,14 @@ export default function EditHighlightScreen() {
             value={personalNote}
             onChangeText={setPersonalNote}
           />
+        </View>
+
+        {/* Tags */}
+        <View style={{ marginBottom: 32 }}>
+          <Text style={{ fontFamily: Fonts!.sansBold, fontSize: 14, color: Colors.forest, marginBottom: 8 }}>
+            Tags
+          </Text>
+          <TagPicker selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
         </View>
 
         {/* Destructive Delete Button */}

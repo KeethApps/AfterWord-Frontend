@@ -1,82 +1,148 @@
 import React from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../constants/theme";
-import { Button } from "../common/Button";
+import { CollapsibleCard } from "../common/CollapsibleCard";
 
-interface SearchFilterSheetProps {
-  onClearAll: () => void;
-  onApplyFilters: () => void;
-  activeContentType: string;
-  onContentTypeChange: (type: string) => void;
+export type SearchSort = "Most Recent" | "Oldest";
+
+interface SearchFiltersProps {
+  activeSort: SearchSort;
+  onSortChange: (sort: SearchSort) => void;
+  expanded: boolean;
+  onToggleExpanded: () => void;
 }
 
-export const SearchFilterSheet: React.FC<SearchFilterSheetProps> = ({
-  onClearAll,
-  onApplyFilters,
-  activeContentType,
-  onContentTypeChange,
+/**
+ * Collapsible Sort & Filter card for the Search page.
+ * Same visual style as HighlightsFilters — sort only, no tags section.
+ */
+export const SearchFilters: React.FC<SearchFiltersProps> = ({
+  activeSort,
+  onSortChange,
+  expanded,
+  onToggleExpanded,
 }) => {
-  const contentTypes = ["All", "Quotes", "Books", "Authors", "Topics", "Notes"];
-
-  const renderFilterRow = (label: string, value: string) => {
-    return (
-      <Pressable className="flex-row items-center justify-between py-4 border-b border-mist">
-        <Text className="font-sansBold text-sm text-forest">{label}</Text>
-        <View className="flex-row items-center">
-          <Text className="font-sans text-sm text-slate mr-2">{value}</Text>
-          <Ionicons name="chevron-forward" size={16} color={Colors.slate} />
-        </View>
-      </Pressable>
-    );
-  };
+  const activeCount = activeSort === "Oldest" ? 1 : 0;
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} className="flex-1 mt-6">
-      {/* Header */}
-      <View className="flex-row justify-between items-end mb-8">
-        <Text className="font-serifBold text-2xl text-forest">Filters</Text>
-        <Pressable onPress={onClearAll}>
-          <Text className="font-sans text-sm text-primary mb-1">Clear all</Text>
+    <CollapsibleCard
+      icon="options-outline"
+      title="Sort & Filter"
+      badgeCount={activeCount}
+      expanded={expanded}
+      onToggle={onToggleExpanded}
+    >
+      {/* Sort */}
+      <Text style={styles.sublabel}>Sort by</Text>
+      <View style={styles.sortRow}>
+        <Pressable
+          onPress={() => onSortChange("Most Recent")}
+          style={[
+            styles.sortOption,
+            activeSort === "Most Recent" && styles.sortOptionActive,
+          ]}
+        >
+          <Ionicons
+            name="arrow-down"
+            size={13}
+            color={activeSort === "Most Recent" ? Colors.cream : Colors.forest}
+          />
+          <Text
+            style={[
+              styles.sortOptionText,
+              activeSort === "Most Recent" && styles.sortOptionTextActive,
+            ]}
+          >
+            Latest first
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => onSortChange("Oldest")}
+          style={[
+            styles.sortOption,
+            activeSort === "Oldest" && styles.sortOptionActive,
+          ]}
+        >
+          <Ionicons
+            name="arrow-up"
+            size={13}
+            color={activeSort === "Oldest" ? Colors.cream : Colors.forest}
+          />
+          <Text
+            style={[
+              styles.sortOptionText,
+              activeSort === "Oldest" && styles.sortOptionTextActive,
+            ]}
+          >
+            Oldest first
+          </Text>
         </Pressable>
       </View>
 
-      {/* Content Type */}
-      <View className="mb-6">
-        <Text className="font-sansBold text-sm text-forest mb-4">Content type</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {contentTypes.map((type) => {
-            const isActive = activeContentType === type;
-            return (
-              <Pressable
-                key={type}
-                onPress={() => onContentTypeChange(type)}
-                className={`px-5 py-2 rounded-full border ${
-                  isActive ? "bg-primary border-primary" : "bg-white border-mist"
-                }`}
-              >
-                <Text className={`font-sans text-sm ${isActive ? "text-white" : "text-forest"}`}>
-                  {type}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Expandable Filters */}
-      <View className="mb-8">
-        {renderFilterRow("Book", "All Books")}
-        {renderFilterRow("Author", "All Authors")}
-        {renderFilterRow("Date highlighted", "Any time")}
-      </View>
-
-      <Button 
-        label="Apply filters" 
-        onPress={onApplyFilters} 
-        fullWidth 
-      />
-      <View className="h-10" />
-    </ScrollView>
+      {/* Clear */}
+      {activeCount > 0 && (
+        <Pressable
+          onPress={() => onSortChange("Most Recent")}
+          style={styles.clearRow}
+          hitSlop={8}
+        >
+          <Ionicons name="close-circle-outline" size={14} color={Colors.slate} />
+          <Text style={styles.clearText}>Clear filters</Text>
+        </Pressable>
+      )}
+    </CollapsibleCard>
   );
 };
+
+// ── Styles ─────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  sublabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 11.5,
+    color: Colors.slate,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  sortRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  sortOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 13,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+  },
+  sortOptionActive: {
+    backgroundColor: Colors.forest,
+    borderColor: Colors.forest,
+  },
+  sortOptionText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.forest,
+  },
+  sortOptionTextActive: {
+    color: Colors.cream,
+  },
+  clearRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 16,
+    alignSelf: "flex-start",
+  },
+  clearText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12.5,
+    color: Colors.slate,
+  },
+});

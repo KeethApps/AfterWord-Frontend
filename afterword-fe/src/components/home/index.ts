@@ -5,3 +5,4 @@ export * from "./RecentlyUploadedRow";
 export * from "./HomeSearchBar";
 export * from "./HomeEmptyState";
 export * from "./KnowledgeGraph";
+export * from "./RecentHighlightsRow";
