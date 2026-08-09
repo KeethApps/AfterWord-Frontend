@@ -43,6 +43,8 @@ type HighlightRaw = {
   location: string | null;
   pageNumber: number | null;
   createdAt: string;
+  isFavorite: boolean;
+  tags?: { id: string; name: string; normalizedName: string; createdAt: string }[];
   notes?: { id: string; content: string; created_at: string }[];
 };
 
@@ -249,7 +251,7 @@ export default function BookDetailsScreen() {
           .eq("highlights.book_id", id),
         supabase
           .from("highlights")
-          .select("id, highlight_text, location, page_number, created_at, notes(id, content, created_at)")
+          .select("id, highlight_text, location, page_number, created_at, is_favorite, notes(id, content, created_at), highlight_tags(tag_id, tags(id, name, normalized_name, created_at))")
           .eq("book_id", id)
           .order("created_at", { ascending: false })
           .range(from, to),
@@ -270,6 +272,13 @@ export default function BookDetailsScreen() {
         location: h.location ?? null,
         pageNumber: h.page_number ?? null,
         createdAt: h.created_at,
+        isFavorite: h.is_favorite ?? false,
+        tags: (h.highlight_tags ?? []).map((ht: any) => ht.tags).filter(Boolean).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          normalizedName: t.normalized_name,
+          createdAt: t.created_at,
+        })),
         notes: h.notes ?? [],
       }));
 
@@ -579,6 +588,8 @@ export default function BookDetailsScreen() {
             pageNumber: item.pageNumber,
             location: item.location,
             createdAt: item.createdAt,
+            isFavorite: item.isFavorite,
+            tags: (item.tags ?? []).map((t: any) => ({ ...t, userId: user?.id ?? '' })),
             embedding: null,
             embeddingModel: null,
             lastSurfacedAt: null,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,53 +10,38 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 
-import { Colors, Fonts, Spacing } from "../../../constants/theme";
+import { Colors, Fonts } from "../../../constants/theme";
 import { AppHeader } from "../../../src/components/AppHeader";
 import { HighlightCard } from "../../../src/components/shared/HighlightCard";
 import { ScreenContainer } from "../../../src/components/common/ScreenContainer";
-import { FilterPills } from "../../../src/components/common/FilterPills";
 import { SearchBar } from "../../../src/components/shared/SearchBar";
 import {
   SearchEmptyState,
   NoResultsState,
   TopResultCard,
   BookResultRow,
-  SearchFilterSheet,
 } from "../../../src/components/search";
 import { supabase } from "../../../lib/supabase";
 import { useSearchBooks } from "../../../hooks/queries/books";
+import { SearchResult } from "../../../types";
 
 const RECENT_SEARCHES_KEY = "@afterword_recent_searches";
-
-interface QuoteResult {
-  highlight_text: string;
-  note_text: string | null;
-  similarity: number;
-  book: {
-    id: string;
-    title: string;
-    author: string;
-    cover_image_url: string | null;
-    isbn?: string | null;
-  };
-}
 
 export default function SearchScreen() {
   const router = useRouter();
 
-  // State
+  // Search state
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeTab, setActiveTab] = useState("Quotes");
   
   // Data State
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [quoteResults, setQuoteResults] = useState<QuoteResult[]>([]);
+  const [quoteResults, setQuoteResults] = useState<SearchResult[]>([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Load Book Results using our hook (it automatically caches and uses active session)
   const { data: bookResults = [], isLoading: loadingBooks } = useSearchBooks(debouncedQuery);
 
   const isLoading = loadingQuotes || loadingBooks;
@@ -69,7 +54,6 @@ export default function SearchScreen() {
     });
   }, []);
 
-  // Save Recent Search
   const saveRecentSearch = async (term: string) => {
     if (!term.trim()) return;
     const newRecent = [term, ...recentSearches.filter((t) => t !== term)].slice(0, 5);
@@ -83,7 +67,7 @@ export default function SearchScreen() {
     await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(newRecent));
   };
 
-  // Debounce Query for Vector Search
+  // Debounce query
   useEffect(() => {
     if (!query.trim()) {
       setDebouncedQuery("");
@@ -91,16 +75,14 @@ export default function SearchScreen() {
       setHasSearched(false);
       return;
     }
-
     const timeout = setTimeout(() => {
       setDebouncedQuery(query.trim());
       saveRecentSearch(query.trim());
     }, 800);
-
     return () => clearTimeout(timeout);
   }, [query]);
 
-  // Execute Vector Search when Debounced Query changes
+  // Re-run search when query OR filters change
   useEffect(() => {
     if (!debouncedQuery) return;
 
@@ -110,12 +92,15 @@ export default function SearchScreen() {
       setSearchError(null);
       try {
         const { data, error } = await supabase.functions.invoke("search", {
-          body: { query: debouncedQuery, limit: 10 },
+          body: {
+            query: debouncedQuery,
+            limit: 10,
+          },
         });
         if (error) throw error;
         setQuoteResults(data?.results || []);
       } catch (err) {
-        console.error("Vector Search error:", err);
+        console.error("Search error:", err);
         setSearchError(err instanceof Error ? err.message : String(err));
         setQuoteResults([]);
       } finally {
@@ -131,8 +116,7 @@ export default function SearchScreen() {
     setQuery(suggestion);
   };
 
-  // ── Render Helpers ───────────────────────────────────────────────────────
-
+  // ── Render helpers ─────────────────────────────────────────────────────────
 
   const renderRecentSearches = () => {
     if (recentSearches.length === 0) return null;
@@ -141,10 +125,7 @@ export default function SearchScreen() {
         <Text className="font-sansBold text-xs text-slate uppercase tracking-widest mb-4">RECENT SEARCHES</Text>
         {recentSearches.map((term) => (
           <View key={term} className="flex-row items-center justify-between py-3">
-            <Pressable 
-              className="flex-row items-center flex-1"
-              onPress={() => setQuery(term)}
-            >
+            <Pressable className="flex-row items-center flex-1" onPress={() => setQuery(term)}>
               <Ionicons name="time-outline" size={30} color={Colors.slate} className="mr-3" />
               <Text className="font-sans text-base text-forest">{term}</Text>
             </Pressable>
@@ -180,12 +161,9 @@ export default function SearchScreen() {
     if (searchError) {
       return (
         <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-          <View 
+          <View
             className="p-4 rounded-lg my-4 flex-row items-center border"
-            style={{ 
-              backgroundColor: '#FEF2F2', 
-              borderColor: '#FECACA' 
-            }}
+            style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA' }}
           >
             <Ionicons name="alert-circle-outline" size={20} color={Colors.danger} className="mr-3" />
             <Text className="font-sans text-sm flex-1" style={{ color: Colors.danger }}>
@@ -202,15 +180,14 @@ export default function SearchScreen() {
 
     if (hasSearched && noBooks && noQuotes) {
       return (
-        <NoResultsState 
-          hasSuggestions 
-          onSuggestionPress={handleSuggestionPress} 
+        <NoResultsState
+          hasSuggestions
+          onSuggestionPress={handleSuggestionPress}
           onClearSearch={() => setQuery("")}
         />
       );
     }
 
-    // Results View
     return (
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1" contentContainerStyle={{ paddingBottom: 60 }}>
 
@@ -248,10 +225,10 @@ export default function SearchScreen() {
           <View className="mb-6">
             <Text className="font-sansBold text-xs text-slate uppercase tracking-wider mb-4">More Quotes</Text>
             {quoteResults.slice(1).map((r, i) => (
-              <View key={i} className="mb-4">
+              <View key={r.highlight_id ?? i} className="mb-4">
                 <HighlightCard
                   highlight={{
-                    id: String(i),
+                    id: r.highlight_id ?? String(i),
                     bookId: r.book.id,
                     userId: "",
                     highlightText: r.highlight_text,
@@ -260,6 +237,7 @@ export default function SearchScreen() {
                     embedding: null,
                     embeddingModel: null,
                     lastSurfacedAt: null,
+                    isFavorite: r.is_favorite,
                     createdAt: new Date().toISOString(),
                     book: {
                       id: r.book.id,
