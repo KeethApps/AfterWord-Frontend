@@ -3,18 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   Animated,
   Easing,
   ActivityIndicator,
   FlatList,
-  TextInput,
-  Alert,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../../hooks/useAuth";
 
-import { Colors, Fonts, Spacing } from "../../../constants/theme";
+import { Colors } from "../../../constants/theme";
 import { AppHeader } from "../../../src/components/AppHeader";
 import { HighlightCard } from "../../../src/components/shared/HighlightCard";
 import { SearchBar } from "../../../src/components/shared/SearchBar";
@@ -27,8 +23,6 @@ import {
   HighlightsSort,
 } from "../../../src/components/highlights";
 import { Pagination } from "@/src/components/shared/Pagination";
-import { useTags } from "../../../hooks/queries/tags";
-import { useQueryClient } from "@tanstack/react-query";
 
 import { Note, Tag } from "../../../types";
 
@@ -91,139 +85,6 @@ function FadeInItem({ index, children }: { index: number; children: React.ReactN
   );
 }
 
-// ── Inline Tags Manager ─────────────────────────────────────────────────────
-
-function TagsManager() {
-  const { data: tags = [], isLoading } = useTags();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  const [expanded, setExpanded] = useState(false);
-  const [newTagName, setNewTagName] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const handleCreate = async () => {
-    const name = newTagName.trim();
-    if (!name) return;
-    setCreating(true);
-    try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) throw new Error("Not signed in");
-      const normalizedName = name.toLowerCase();
-      const { error } = await supabase.from("tags").upsert(
-        { user_id: authUser.id, name, normalized_name: normalizedName },
-        { onConflict: "user_id,normalized_name", ignoreDuplicates: false }
-      );
-      if (error) throw error;
-      setNewTagName("");
-      queryClient.invalidateQueries({ queryKey: ["tags"] });
-    } catch (err: any) {
-      Alert.alert("Error", err.message || "Failed to create tag");
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const handleDelete = async (tag: Tag) => {
-    setDeletingId(tag.id);
-    try {
-      const { error } = await supabase.from("tags").delete().eq("id", tag.id);
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["tags"] });
-      queryClient.invalidateQueries({ queryKey: ["highlights"] });
-    } catch (err: any) {
-      Alert.alert("Error", err.message || "Failed to delete tag");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  return (
-    <View style={styles.tagsManager}>
-      {/* Header row — always visible */}
-      <Pressable
-        onPress={() => setExpanded(!expanded)}
-        style={styles.tagsManagerHeader}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Ionicons name="pricetags-outline" size={16} color={Colors.forest} />
-          <Text style={styles.tagsManagerTitle}>Manage Tags</Text>
-          {tags.length > 0 && (
-            <View style={styles.tagCountBadge}>
-              <Text style={styles.tagCountText}>{tags.length}</Text>
-            </View>
-          )}
-        </View>
-        <Ionicons
-          name={expanded ? "chevron-up" : "chevron-down"}
-          size={16}
-          color={Colors.slate}
-        />
-      </Pressable>
-
-      {/* Expanded body */}
-      {expanded && (
-        <View style={styles.tagsManagerBody}>
-          {/* Create row */}
-          <View style={styles.createRow}>
-            <TextInput
-              style={styles.tagInput}
-              placeholder="New tag name..."
-              placeholderTextColor={Colors.slate}
-              value={newTagName}
-              onChangeText={setNewTagName}
-              onSubmitEditing={handleCreate}
-              returnKeyType="done"
-              autoCapitalize="none"
-            />
-            <Pressable
-              onPress={handleCreate}
-              disabled={creating || !newTagName.trim()}
-              style={[styles.createBtn, (!newTagName.trim() || creating) && { opacity: 0.4 }]}
-            >
-              {creating ? (
-                <ActivityIndicator size="small" color={Colors.cream} />
-              ) : (
-                <Ionicons name="add" size={18} color={Colors.cream} />
-              )}
-            </Pressable>
-          </View>
-
-          {/* Existing tags */}
-          {isLoading ? (
-            <ActivityIndicator size="small" color={Colors.forest} style={{ marginTop: 8 }} />
-          ) : tags.length === 0 ? (
-            <Text style={styles.emptyTagsText}>No tags yet. Add one above.</Text>
-          ) : (
-            <View style={styles.tagsList}>
-              {tags.map((tag: Tag) => (
-                <View key={tag.id} style={styles.tagRow}>
-                  <View style={styles.tagPill}>
-                    <Text style={styles.tagPillText}>{tag.name}</Text>
-                  </View>
-                  <Pressable
-                    onPress={() => handleDelete(tag)}
-                    disabled={deletingId === tag.id}
-                    hitSlop={8}
-                    style={{ opacity: deletingId === tag.id ? 0.4 : 1 }}
-                  >
-                    {deletingId === tag.id ? (
-                      <ActivityIndicator size="small" color={Colors.slate} />
-                    ) : (
-                      <Ionicons name="trash-outline" size={16} color={Colors.slate} />
-                    )}
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      )}
-    </View>
-  );
-}
-
 // ── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function HighlightsScreen() {
@@ -259,9 +120,17 @@ export default function HighlightsScreen() {
       const to = from + PAGE_SIZE - 1;
 
       const isNotesTab = activeTab === "Notes";
+      const hasTagFilter = filterTagIds.length > 0;
 
       let dbQuery = supabase.from("highlights")
-        .select(isNotesTab ? 'id, notes!inner(id)' : '*', { count: "exact", head: true })
+        .select(
+          isNotesTab
+            ? 'id, notes!inner(id)'
+            : hasTagFilter
+            ? 'id, highlight_tags!inner(tag_id)'
+            : 'id',
+          { count: "exact", head: true }
+        )
         .eq('user_id', user.id);
 
       let dataQuery = supabase.from("highlights")
@@ -280,7 +149,7 @@ export default function HighlightsScreen() {
             cover_image_url,
             isbn
           ),
-          highlight_tags ( tag_id, tags ( id, name, normalized_name, created_at ) )
+          highlight_tags${hasTagFilter ? '!inner' : ''} ( tag_id, tags ( id, name, normalized_name, created_at ) )
         `)
         .eq('user_id', user.id)
         .range(from, to);
@@ -297,7 +166,7 @@ export default function HighlightsScreen() {
         dataQuery = dataQuery.ilike('highlight_text', `%${query}%`);
       }
 
-      if (filterTagIds.length > 0) {
+      if (hasTagFilter) {
         dbQuery = (dbQuery as any).in('highlight_tags.tag_id', filterTagIds);
         dataQuery = (dataQuery as any).in('highlight_tags.tag_id', filterTagIds);
       }
@@ -369,11 +238,11 @@ export default function HighlightsScreen() {
       <AppHeader title="My Highlights" />
 
       <View className="px-4 flex-1">
+        {/* Search bar — no filter icon */}
         <SearchBar
           value={query}
           onChangeText={setQuery}
           placeholder="Search your highlights..."
-          onFilterPress={() => setIsFiltersOpen((o) => !o)}
           className="mb-4"
         />
 
@@ -386,7 +255,7 @@ export default function HighlightsScreen() {
           />
         </View>
 
-        {/* Sort & Filter — collapsible inline section, mirrors Manage Tags below */}
+        {/* Sort & Filter — collapsible inline section */}
         <HighlightsFilters
           expanded={isFiltersOpen}
           onToggleExpanded={() => setIsFiltersOpen((o) => !o)}
@@ -396,8 +265,6 @@ export default function HighlightsScreen() {
           onTagsChange={setFilterTagIds}
         />
 
-        {/* Tags manager — collapsible inline section */}
-        <TagsManager />
 
         {!loading && totalCount > 0 && (
           <Text className="font-sans text-sm text-slate mb-4">
@@ -463,94 +330,3 @@ export default function HighlightsScreen() {
     </ScreenContainer>
   );
 }
-
-// ── Styles ──────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  tagsManager: {
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 16,
-    overflow: "hidden",
-  },
-  tagsManagerHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  tagsManagerTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: Colors.forest,
-  },
-  tagCountBadge: {
-    backgroundColor: Colors.mist,
-    borderRadius: 99,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  tagCountText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 11,
-    color: Colors.forest,
-  },
-  tagsManagerBody: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    padding: 14,
-  },
-  createRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
-  },
-  tagInput: {
-    flex: 1,
-    backgroundColor: Colors.mist,
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: Colors.forest,
-  },
-  createBtn: {
-    backgroundColor: Colors.forest,
-    borderRadius: 8,
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tagsList: {
-    gap: 8,
-  },
-  tagRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  tagPill: {
-    backgroundColor: "#EEF5EE",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-  },
-  tagPillText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    color: Colors.forest,
-  },
-  emptyTagsText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    color: Colors.slate,
-    textAlign: "center",
-    paddingVertical: 8,
-  },
-});

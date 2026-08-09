@@ -7,23 +7,26 @@ export function useCreateNote() {
   return useMutation({
     mutationFn: async ({
       highlightId,
-      userId,
       content,
     }: {
       highlightId: string;
-      userId: string;
+      userId?: string;
       content: string;
     }) => {
-      const { data, error } = await supabase
-        .from('notes')
-        .insert([{ highlight_id: highlightId, user_id: userId, content }])
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('manage-highlight', {
+        body: {
+          action: 'create_note',
+          highlight_id: highlightId,
+          content,
+        },
+      });
 
-      if (error) throw error;
-      return data;
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || 'Failed to create note');
+      }
+      return data.note;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalidate the highlights query so notes appear
       queryClient.invalidateQueries({
         queryKey: ['highlights'],

@@ -76,7 +76,7 @@ export const HighlightsEmptyState: React.FC<HighlightsEmptyStateProps> = ({
       <View className="flex-1 justify-center mt-12">
         <EmptyState
           title="No highlights found"
-          description="Try a different keyword or check your spelling."
+          description="Try a different keyword or clear the filters to see more results!"
           foxVariant="telescope"
         >
           <View className="mt-6 w-48">

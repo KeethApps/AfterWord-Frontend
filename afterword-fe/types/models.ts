@@ -77,5 +77,7 @@ export interface SearchResult {
   is_favorite: boolean;
   /** RRF score — NOT a 0–1 similarity percentage */
   relevance: number;
+  /** ISO timestamp of when the highlight was created */
+  created_at?: string;
   book: SearchResultBook;
 }

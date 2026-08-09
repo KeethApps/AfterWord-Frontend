@@ -3,6 +3,21 @@ import { supabase } from '../../lib/supabase';
 import { Book } from '../../types';
 import { useAuth } from '../useAuth';
 
+async function extractEdgeFunctionError(error: any, data: any): Promise<string> {
+  if (data?.error && typeof data.error === 'string') {
+    return data.error;
+  }
+  if (error) {
+    if ('context' in error && error.context && typeof error.context.json === 'function') {
+      try {
+        const errBody = await error.context.json();
+        if (errBody?.error) return errBody.error;
+      } catch (_) {}
+    }
+    return error.message || 'Edge function error';
+  }
+  return 'Unknown error occurred';
+}
 
 export function useBooks() {
   const { user } = useAuth();
@@ -112,18 +127,131 @@ export function useSearchBooks(query: string) {
   });
 }
 
+export type CreateBookInput = {
+  title: string;
+  author?: string;
+  isbn?: string;
+  cover_image_url?: string;
+  description?: string;
+  genre?: string;
+  publisher?: string;
+  publish_date?: string;
+  enrichment_status?: string;
+};
+
+export function useCreateBook() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateBookInput): Promise<Book> => {
+      const { data, error } = await supabase.functions.invoke('manage-book', {
+        body: {
+          action: 'create',
+          ...input,
+        },
+      });
+
+      if (error || data?.error) {
+        const message = await extractEdgeFunctionError(error, data);
+        throw new Error(message);
+      }
+
+      const b = data.book;
+      return {
+        id: b.id,
+        userId: b.user_id,
+        title: b.title,
+        author: b.author,
+        isbn: b.isbn,
+        coverImageUrl: b.cover_image_url,
+        description: b.description,
+        publisher: b.publisher,
+        publishDate: b.publish_date,
+        enrichmentStatus: b.enrichment_status,
+        createdAt: b.created_at,
+        updatedAt: b.updated_at,
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['library_stats'] });
+    },
+  });
+}
+
+export type UpdateBookInput = {
+  bookId: string;
+  updates: {
+    title?: string;
+    author?: string;
+    isbn?: string;
+    cover_image_url?: string;
+    description?: string;
+    genre?: string;
+    publisher?: string;
+    publish_date?: string;
+    enrichment_status?: string;
+  };
+};
+
+export function useUpdateBook() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ bookId, updates }: UpdateBookInput): Promise<Book> => {
+      const { data, error } = await supabase.functions.invoke('manage-book', {
+        body: {
+          action: 'update',
+          book_id: bookId,
+          updates,
+        },
+      });
+
+      if (error || data?.error) {
+        const message = await extractEdgeFunctionError(error, data);
+        throw new Error(message);
+      }
+
+      const b = data.book;
+      return {
+        id: b.id,
+        userId: b.user_id,
+        title: b.title,
+        author: b.author,
+        isbn: b.isbn,
+        coverImageUrl: b.cover_image_url,
+        description: b.description,
+        publisher: b.publisher,
+        publishDate: b.publish_date,
+        enrichmentStatus: b.enrichment_status,
+        createdAt: b.created_at,
+        updatedAt: b.updated_at,
+      };
+    },
+    onSuccess: (_, { bookId }) => {
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['book', bookId] });
+      queryClient.invalidateQueries({ queryKey: ['library_stats'] });
+    },
+  });
+}
+
 export function useDeleteBook() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (bookId: string) => {
-      const { error } = await supabase
-        .from('books')
-        .delete()
-        .eq('id', bookId);
+      const { data, error } = await supabase.functions.invoke('manage-book', {
+        body: {
+          action: 'delete',
+          book_id: bookId,
+        },
+      });
 
-      if (error) throw error;
+      if (error || data?.error) {
+        const message = await extractEdgeFunctionError(error, data);
+        throw new Error(message);
+      }
     },
     onSuccess: (_, bookId) => {
       queryClient.invalidateQueries({ queryKey: ['books'] });

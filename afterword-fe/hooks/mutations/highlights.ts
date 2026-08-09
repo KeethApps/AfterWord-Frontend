@@ -1,29 +1,26 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { Highlight } from '../../types';
-import * as crypto from 'crypto';
 
 export function useUploadHighlights() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ userId, highlights }: { userId: string, highlights: Partial<Highlight>[] }): Promise<void> => {
-      const toInsert = highlights.map(h => ({
-        user_id: userId,
-        book_id: h.bookId,
-        highlight_text: h.highlightText,
-        location: h.location,
-        page_number: h.pageNumber,
-      }));
+      const { data, error } = await supabase.functions.invoke('manage-highlight', {
+        body: {
+          action: 'batch_upsert',
+          highlights,
+        },
+      });
 
-      const { error } = await supabase
-        .from('highlights')
-        .upsert(toInsert, { onConflict: 'user_id, highlight_text' });
-
-      if (error) throw error;
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || 'Failed to upload highlights');
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['highlights', variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ['highlights'] });
     },
   });
 }

@@ -48,7 +48,7 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
   const getIconName = (routeName: string, isFocused: boolean): keyof typeof Ionicons.glyphMap => {
     switch (routeName) {
       case 'library': return isFocused ? 'library' : 'library-outline';
-      case 'search': return isFocused ? 'search' : 'search-outline';
+      case 'collections': return isFocused ? 'albums' : 'albums-outline';
       case 'highlights': return isFocused ? 'bookmarks' : 'bookmarks-outline';
       case 'index': return isFocused ? 'home' : 'home-outline';
       case 'upload': return isFocused ? 'cloud-upload' : 'cloud-upload-outline';
@@ -144,7 +144,7 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
           const { options } = descriptors[route.key];
           const label = options.title !== undefined ? options.title : route.name;
           const isFocused = state.index === index;
-          const isCenter = route.name === 'search';
+          const isCenter = route.name === 'collections';
 
           if (isCenter) {
             return (

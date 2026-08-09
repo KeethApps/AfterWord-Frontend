@@ -28,9 +28,7 @@ function normalizeTag(name: string): string {
 
 /**
  * Multi-select tag picker with inline tag creation.
- * Creating a new tag upserts it directly into the `tags` table via the
- * Supabase client (RLS-protected; unique constraint on user_id + normalized_name
- * handles deduplication automatically).
+ * Creating a new tag routes through the `manage-highlight` Edge Function.
  */
 export const TagPicker: React.FC<TagPickerProps> = ({ selectedTagIds, onChange }) => {
   const { data: allTags = [], isLoading } = useTags();
@@ -66,25 +64,22 @@ export const TagPicker: React.FC<TagPickerProps> = ({ selectedTagIds, onChange }
 
     setCreating(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const { data, error } = await supabase.functions.invoke('manage-highlight', {
+        body: {
+          action: 'upsert_tag',
+          name,
+        },
+      });
 
-      const { data, error } = await supabase
-        .from('tags')
-        .upsert(
-          { user_id: user.id, name: name, normalized_name: normalizedName },
-          { onConflict: 'user_id,normalized_name', ignoreDuplicates: false }
-        )
-        .select('id, user_id, name, normalized_name, created_at')
-        .single();
-
-      if (error) throw error;
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || 'Failed to create tag');
+      }
 
       // Refresh tags list
       await queryClient.invalidateQueries({ queryKey: ['tags'] });
 
-      if (data) {
-        onChange([...selectedTagIds, data.id]);
+      if (data?.tag) {
+        onChange([...selectedTagIds, data.tag.id]);
       }
       setInputValue('');
     } catch (err: any) {
