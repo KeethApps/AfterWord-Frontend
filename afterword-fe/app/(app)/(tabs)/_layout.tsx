@@ -27,10 +27,9 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="library" options={{ title: 'Library' }} />
-      <Tabs.Screen name="collections" options={{ title: 'Collections' }} />
-      <Tabs.Screen name="highlights" options={{ title: 'Highlights' }} />
       <Tabs.Screen name="upload" options={{ title: 'Upload' }} />
-      
+      <Tabs.Screen name="highlights" options={{ title: 'Highlights' }} />
+      <Tabs.Screen name="collections" options={{ title: 'Collections' }} />
     </Tabs>
   );
 }

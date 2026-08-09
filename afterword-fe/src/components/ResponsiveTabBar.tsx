@@ -144,7 +144,7 @@ export function ResponsiveTabBar({ state, descriptors, navigation }: BottomTabBa
           const { options } = descriptors[route.key];
           const label = options.title !== undefined ? options.title : route.name;
           const isFocused = state.index === index;
-          const isCenter = route.name === 'collections';
+          const isCenter = route.name === 'upload';
 
           if (isCenter) {
             return (

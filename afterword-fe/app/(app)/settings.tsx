@@ -755,7 +755,8 @@ export default function SettingsScreen() {
       ]
     );
   }
-  const CANNY_URL =
+
+const CANNY_URL =
   "https://afterwordapp.canny.io/bug-reports/create?title=Bug+Report&details=%5BDescribe+the+bug%5D%0A%0A**Steps+to+reproduce%3A**%0A1.+%0A2.+%0A3.+%0A%0A**Expected+behaviour%3A**%0A%0A**Actual+behaviour%3A**%0A%0A**Device+%2F+OS+version%3A**%0A";
 
 async function handleReportBug() {
@@ -764,6 +765,26 @@ async function handleReportBug() {
     await Linking.openURL(CANNY_URL);
   } else {
     Alert.alert("Error", "Could not open the bug report page.");
+  }
+}
+
+const GITBOOK_URL = "https://afterword.gitbook.io/afterword-docs/importing-your-highlights"
+async function handleHelp() {
+  const supported = await Linking.canOpenURL(GITBOOK_URL);
+  if (supported) {
+    await Linking.openURL(GITBOOK_URL);
+  } else {
+    Alert.alert("Error", "Could not open the docs.");
+  }
+}
+
+const CHANGELOG_URL = "https://afterwordapp.canny.io/changelog"
+async function handleWhatsNew() {
+  const supported = await Linking.canOpenURL(CHANGELOG_URL);
+  if (supported) {
+    await Linking.openURL(CHANGELOG_URL);
+  } else {
+    Alert.alert("Error", "Could not open the docs.");
   }
 }
 
@@ -903,7 +924,7 @@ async function handleReportBug() {
             <NavRow
               icon="help-circle-outline"
               label="Help & Support"
-              onPress={() => openSheet("help")}
+              onPress={handleHelp}
             />
             <RowDivider />
             <NavRow
@@ -915,7 +936,7 @@ async function handleReportBug() {
             <NavRow
               icon="gift-outline"
               label="What's New"
-              onPress={() => openSheet("whatsNew")}
+              onPress={handleWhatsNew}
             />
             <RowDivider />
             <NavRow
