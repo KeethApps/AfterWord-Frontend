@@ -4,7 +4,6 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  Share,
   Platform,
   Alert,
   Clipboard,
@@ -22,6 +21,7 @@ import { supabase } from '../../../lib/supabase';
 import { useToggleFavorite, useUpdateHighlightTags } from '../../../hooks/mutations/highlights';
 import { useHighlightTagIds } from '../../../hooks/queries/tags';
 import { TagPicker } from '../common/TagPicker';
+import { ShareHighlightModal } from '../highlights/ShareHighlightModal';
 
 export interface HighlightCardProps {
   highlight: HighlightWithBook;
@@ -43,9 +43,11 @@ export const HighlightCard = ({ highlight, onShare, className = '', onDeleteComp
 
   const [isFavorite, setIsFavorite] = useState(highlight.isFavorite ?? false);
   const [sheet, setSheet] = useState<Sheet>('none');
+  const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [savingTags, setSavingTags] = useState(false);
   const [pendingTagIds, setPendingTagIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
+
   // Dropdown anchor position (screen coords)
   const [dropY, setDropY] = useState(0);
   const [dropRight, setDropRight] = useState(0);
@@ -121,16 +123,13 @@ export const HighlightCard = ({ highlight, onShare, className = '', onDeleteComp
   };
 
   // ── Actions ───────────────────────────────────────────────────────────────
-  const handleShare = async () => {
+  const handleShare = () => {
     setSheet('none');
-    if (onShare) { onShare(); return; }
-    try {
-      const bookTitle = highlight.book?.title || 'Unknown Book';
-      const bookAuthor = highlight.book?.author || 'Unknown Author';
-      await Share.share({
-        message: `"${highlight.highlightText}"\n\n— ${bookTitle}, ${bookAuthor}\n\n(powered by AfterWord)`,
-      });
-    } catch {}
+    if (onShare) {
+      onShare();
+      return;
+    }
+    setIsShareModalVisible(true);
   };
 
   const handleCopy = () => {
@@ -297,6 +296,11 @@ export const HighlightCard = ({ highlight, onShare, className = '', onDeleteComp
 
         <View style={[styles.dropdown, { top: dropY, right: dropRight }]}>
           <DropItem
+            icon="share-outline"
+            label="Share Highlight Card"
+            onPress={handleShare}
+          />
+          <DropItem
             icon="pricetag-outline"
             label="Manage Tags"
             onPress={() => { setSheet('none'); setTimeout(openTagSheet, 100); }}
@@ -319,6 +323,17 @@ export const HighlightCard = ({ highlight, onShare, className = '', onDeleteComp
           />
         </View>
       </Modal>
+
+      {/* ── Share Highlight Modal ──────────────────────────────────────── */}
+      <ShareHighlightModal
+        visible={isShareModalVisible}
+        onClose={() => setIsShareModalVisible(false)}
+        highlightText={highlight.highlightText}
+        noteText={hasNotes ? notes![0].content : undefined}
+        bookTitle={highlight.book?.title || 'Unknown Book'}
+        author={highlight.book?.author || 'Unknown Author'}
+        highlightId={highlight.id}
+      />
 
       {/* ── Tag picker bottom sheet ─────────────────────────────────────── */}
       <Modal
